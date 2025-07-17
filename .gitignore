@@ -1,0 +1,9 @@
+/pipeline/1_dataset/a_input/protein_overview/*_protein_overview.txt
+/pipeline/1_dataset/b_structure/proteins_cluster/phage_hypothetical_clustered.*
+/pipeline/1_dataset/b_structure/proteins_cluster/phage_hypothetical_clustered_rep*
+/pipeline/1_dataset/b_structure/proteins_cluster/phage_hypothetical_clustered_h*
+/pipeline/1_dataset/b_structure/proteins_cluster/phage_hypothetical.*
+/pipeline/1_dataset/b_structure/proteins_cluster/phage_hypothetical
+/pipeline/1_dataset/b_structure/proteins_filter
+/pipeline/1_dataset/Internal*
+/pipeline/2_annotation/Personal*

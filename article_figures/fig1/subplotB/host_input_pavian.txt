@@ -1,0 +1,108 @@
+#SampleID	Metaphlan2_Analysis
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Escherichia|g__ Escherichia coli|s__	0.625
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__|s__	73
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__	416.4583333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa ATCC 15442	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa CF127	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa CF5	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa CF77	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa CHA	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa DSM 50071 = NBRC 12689	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa PA1	3
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa PA14	22
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa PAK	7
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa PAO1	112.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa ATCC 15442	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa|s__ Pseudomonas aeruginosa UCBPP-PA14	3
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Moraxellales|o__ Moraxellaceae|f__ Acinetobacter|g__ Acinetobacter calcoaceticus|s__	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Escherichia|g__ Escherichia coli|s__ Escherichia coli C	1.333333333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas agarici|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas alcaligenes|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas chlororaphis|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas cichorii|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas coronafaciens|s__ Pseudomonas coronafaciens pv. porri	6
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas cuatrocienegasensis|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas fluorescens|s__	23.625
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas fluorescens|s__ Pseudomonas fluorescens Q8r1-96	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas fluorescens|s__ Pseudomonas fluorescens SBW25	4
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas grimontii|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas koreensis|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas lactis|s__	1.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas carnis|s__	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas luteola|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas oryzihabitans|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas otitidis|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas plecoglossicida|s__	3
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas protegens|s__	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas putida|s__	16.625
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas putida|s__ Pseudomonas putida NBRC 14164	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas putida|s__ Pseudomonas putida S12	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas savastanoi|s__ Pseudomonas savastanoi pv. glycinea	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas savastanoi|s__ Pseudomonas savastanoi pv. phaseolicola	6.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sivasensis|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp.|s__	77
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. D3|s__	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. 1-1-1b|s__	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. ANT_H14|s__	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. G11|s__	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae|s__	20.33333333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae|s__ Pseudomonas syringae pv. actinidiae	27.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae|s__ Pseudomonas syringae pv. avii	9
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae|s__ Pseudomonas syringae pv. syringae	1.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae|s__ Pseudomonas syringae pv. tomato	16.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas tolaasii|s__	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas tolaasii|s__ Pseudomonas tolaasii NCPPB 2192	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Morganellaceae|f__ Proteus|g__ Proteus mirabilis|s__	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Vibrionales|o__ Vibrionaceae|f__ Vibrio|g__ Vibrio cholerae|s__	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Salmonella|g__ Salmonella enterica|s__ Salmonella enterica subsp. enterica	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Escherichia|g__ Escherichia coli	1.958333333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Salmonella|g__ Salmonella enterica	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Morganellaceae|f__ Proteus|g__ Proteus mirabilis	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Moraxellales|o__ Moraxellaceae|f__ Acinetobacter|g__ Acinetobacter calcoaceticus	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__	73
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas aeruginosa	573.9583333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas agarici	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas alcaligenes	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas carnis	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas chlororaphis	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas cichorii	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas coronafaciens	6
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas cuatrocienegasensis	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas fluorescens	28.625
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas grimontii	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas koreensis	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas lactis	1.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas luteola	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas oryzihabitans	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas otitidis	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas plecoglossicida	3
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas protegens	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas putida	18.625
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas savastanoi	7.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sivasensis	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp.	77
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. 1-1-1b	1
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. ANT_H14	2
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. D3	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas sp. G11	0.5
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas syringae	74.83333333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas|g__ Pseudomonas tolaasii	3
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Vibrionales|o__ Vibrionaceae|f__ Vibrio|g__ Vibrio cholerae	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Escherichia	1.958333333
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae|f__ Salmonella	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Morganellaceae|f__ Proteus	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Moraxellales|o__ Moraxellaceae|f__ Acinetobacter	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae|f__ Pseudomonas	884.54166663
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Vibrionales|o__ Vibrionaceae|f__ Vibrio	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Enterobacteriaceae	2.0833333329999997
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales|o__ Morganellaceae	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Moraxellales|o__ Moraxellaceae	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales|o__ Pseudomonadaceae	884.54166663
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Vibrionales|o__ Vibrionaceae	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Enterobacterales	2.2083333329999997
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Moraxellales	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Pseudomonadales	884.54166663
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria|c__ Vibrionales	0.125
+d__Bacteria|k__ Pseudomonadota|p__ Gammaproteobacteria	886.9999999629999
+d__Bacteria|k__ Pseudomonadota	886.9999999629999
+d__Bacteria	886.9999999629999

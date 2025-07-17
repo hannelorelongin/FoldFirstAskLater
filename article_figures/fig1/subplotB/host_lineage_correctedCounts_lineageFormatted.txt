@@ -1,0 +1,57 @@
+Domain	Phylum	Class	Order	Family	Genus	Species	Below_species_class	size_corrected
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Enterobacterales	 Enterobacteriaceae	 Escherichia	 Escherichia coli		0,625
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas			73
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa		416,4583333
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa ATCC 15442	2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa CF127	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa CF5	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa CF77	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa CHA	2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa DSM 50071 = NBRC 12689	2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa PA1	3
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa PA14	22
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa PAK	7
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa PAO1	112,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa ATCC 15442	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas aeruginosa	 Pseudomonas aeruginosa UCBPP-PA14	3
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Moraxellales	 Moraxellaceae	 Acinetobacter	 Acinetobacter calcoaceticus		0,125
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Enterobacterales	 Enterobacteriaceae	 Escherichia	 Escherichia coli	 Escherichia coli C	1,333333333
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas agarici		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas alcaligenes		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas chlororaphis		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas cichorii		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas coronafaciens	 Pseudomonas coronafaciens pv. porri	6
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas cuatrocienegasensis		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas fluorescens		23,625
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas fluorescens	 Pseudomonas fluorescens Q8r1-96	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas fluorescens	 Pseudomonas fluorescens SBW25	4
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas grimontii		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas koreensis		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas lactis		1,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas carnis		0,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas luteola		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas oryzihabitans		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas otitidis		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas plecoglossicida		3
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas protegens		2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas putida		16,625
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas putida	 Pseudomonas putida NBRC 14164	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas putida	 Pseudomonas putida S12	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas savastanoi	 Pseudomonas savastanoi pv. glycinea	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas savastanoi	 Pseudomonas savastanoi pv. phaseolicola	6,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sivasensis		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sp.		77
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sp. D3		0,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sp. 1-1-1b		1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sp. ANT_H14		2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas sp. G11		0,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas syringae		20,33333333
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas syringae	 Pseudomonas syringae pv. actinidiae	27,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas syringae	 Pseudomonas syringae pv. avii	9
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas syringae	 Pseudomonas syringae pv. syringae	1,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas syringae	 Pseudomonas syringae pv. tomato	16,5
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas tolaasii		2
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Pseudomonadales	 Pseudomonadaceae	 Pseudomonas	 Pseudomonas tolaasii	 Pseudomonas tolaasii NCPPB 2192	1
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Enterobacterales	 Morganellaceae	 Proteus	 Proteus mirabilis		0,125
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Vibrionales	 Vibrionaceae	 Vibrio	 Vibrio cholerae		0,125
+Bacteria	 Pseudomonadota	 Gammaproteobacteria	 Enterobacterales	 Enterobacteriaceae	 Salmonella	 Salmonella enterica	 Salmonella enterica subsp. enterica	0,125

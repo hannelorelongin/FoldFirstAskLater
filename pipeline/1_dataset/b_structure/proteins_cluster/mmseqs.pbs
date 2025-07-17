@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -N MMseqs
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=1:00:00
+
+cd $PBS_O_WORKDIR
+export OMP_PROC_BIND=false
+
+module load MMseqs2/14-7e284-gompi-2023a
+
+mmseqs createdb all_hypothetical.fa phage_hypothetical
+mmseqs cluster phage_hypothetical phage_hypothetical_clustered $TMPDIR --min-seq-id 0.9
+mmseqs createtsv phage_hypothetical phage_hypothetical phage_hypothetical_clustered phage_hypothetical_clustered.tsv
+mmseqs createsubdb phage_hypothetical_clustered phage_hypothetical phage_hypothetical_clustered_rep
+mmseqs convert2fasta phage_hypothetical_clustered_rep phage_hypothetical_clustered_rep.fasta
+

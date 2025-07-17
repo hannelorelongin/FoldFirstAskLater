@@ -1,0 +1,292 @@
+#SampleID	Metaphlan2_Analysis
+d__Viruses	887
+d__Viruses|k__ Duplodnaviria	869
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae	869
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota	869
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes	869
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__	714
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__ unclassified Caudoviricetes	155
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__ unclassified Caudoviricetes|g__	155
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__ unclassified Caudoviricetes|g__|s__	155
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__	479
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae	139
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__	20
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Bifseptvirus andromeda	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Bifseptvirus Bf7	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus 17A	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus gh1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus henninger	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus KNP	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus Pf1ERZ2017	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus PPPL1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus Psa17	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus PSA2	8
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus shl2	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Ghunavirus WRT	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Kantovirus C171	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Kirikabuvirus NV3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Napahaivirus VSW3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus 15pyo	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus Ab05	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus ABTNL	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus DL62	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus kF77	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus LKD16	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus LUZ19	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus MPK6	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus MPK7	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus NFS	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus PAXYB1	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus phiKMV	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus PT2	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus PT5	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus pv130113	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phikmvvirus RLP	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Phutvirus PPpW4	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus IBBPF7A	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus Pf10	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus PFP1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus PhiS1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus pv22PfluR64PP	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pifdecavirus UNOSLW1	5
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pijolavirus PspYZU08	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Pollyceevirus pollyC	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Stubburvirus LKA1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Troedvirus Phi15	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Tunggulvirus f2	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Uliginvirus achelous	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Uliginvirus alpheus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Uliginvirus nerthus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Uliginvirus njord	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Uliginvirus uligo	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Bifseptvirus	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Gajwadongvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Ghunavirus	16
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Phikmvvirus	16
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Pifdecavirus	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Pijolavirus	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Pollyceevirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Troedvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Tunggulvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ unclassified Uliginvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Autographiviridae|s__ Warsawvirus 3MF5	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Casjensviridae	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Casjensviridae|s__ Maxdohrnvirus SS2019XI	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Casjensviridae|s__ Phobosvirus phobos	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Casjensviridae|s__ Phobosvirus PspYZU01	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Drexlerviridae	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Drexlerviridae|s__	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Fredfastierviridae	10
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Fredfastierviridae|s__ Jamesmcgillvirus jv119X	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Fredfastierviridae|s__ Jamesmcgillvirus PaMx41	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Fredfastierviridae|s__ unclassified Jamesmcgillvirus	8
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae	22
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Epaquintavirus Epa5	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus Ab18	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus Ab19	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus LKO4	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus M6	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus MP1412	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus PAE1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ Pseudomonas virus PaMx11	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ unclassified Abidjanvirus	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ unclassified Epaquintavirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Mesyanzhinovviridae|s__ unclassified Yuavirus	7
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae	6
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae|s__	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae|s__ Citexvirus BR319A	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae|s__ Citexvirus dobby	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae|s__ Citexvirus phiCTX	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Peduoviridae|s__ Phitrevirus phi3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae	45
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Inbricusvirus inbricus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Littlefixvirus littlefix	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Litunavirus Ab09	6
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Litunavirus LIT1	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Litunavirus PA26	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Luzseptimavirus KPP21	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Luzseptimavirus LUZ7	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Shizishanvirus phCDa	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ unclassified Littlefixvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ unclassified Litunavirus	20
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ unclassified Luzseptimavirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Zicotriavirus ZC03	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Zicotriavirus ZC08	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Schitoviridae|s__ Zurivirus zuri	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Straboviridae	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Straboviridae|s__ Jiangsuvirus pspyzu05	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Zobellviridae	8
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Zobellviridae|s__	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Zobellviridae|s__ Paundecimvirus PA11	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__ Zobellviridae|s__ unclassified Paundecimvirus	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Baikalvirus PaBG	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Beetrevirus B3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Beetrevirus JBD67	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Beetrevirus JD18	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Beetrevirus PM105	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bjornvirus bjorn	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus Ab22	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus CHU	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus PAA2	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus PaP3	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus PaP4	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Bruynoghevirus TL	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus D3112	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus DMS3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus FHA0480	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus LPB1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus MP22	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus MP29	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus MP38	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Casadabanvirus PA1KOR	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Chakrabartyvirus pf16	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Detrevirus D3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Detrevirus PMG1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Elvirus EL	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Flaumdravirus KIL2	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Flaumdravirus KIL4	5
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Harrisonburgvirus persinger	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Hollowayvirus F116	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Hollowayvirus H66	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Knuthellervirus PMBT14	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Kochitakasuvirus KPP25	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Kochitakasuvirus R18	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Krylovvirus tf	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Lanavirus lana	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Maxrubnervirus PMBT3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nankokuvirus Ab03	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nankokuvirus G1	5
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nankokuvirus KPP10	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nankokuvirus PAKP3	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nankokuvirus PS24	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nickievirus nickie	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nipunavirus NP1	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Nipunavirus PaMx25	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Noxifervirus noxifer	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Otagovirus Psa374	7
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Otagovirus VCM	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus CAb02	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus CAb1	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus JG004	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus MAG1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus MK	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus PA10	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus PAKP1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus PAKP2	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus PAKP4	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus PaP1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pakpunavirus zigelbrucke	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pamexvirus PaMx28	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pamexvirus PaMx74	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus Ab28	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus antinowhere	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus BrSP1	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus crassa	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus datas	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus DL60	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus DP1	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus E215	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus E217	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus Epa14	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus EPa61	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus Epa7	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus F8	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus KPP12	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus KTN6	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus LBL3	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus LMA2	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus LS1	13
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PA01	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus Pa193	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PA5	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PA8P1	9
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PaGU11	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PB1	18
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus PS44	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus pv141	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus R12	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus R26	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus S1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus SL1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus SN	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pbunavirus USP1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Phikzvirus PA7	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Phikzvirus phiKZ	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Phikzvirus SL2	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Plaisancevirus PMW	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pseudomonas virus DL68	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pseudomonas virus JG024	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Pseudomonas virus NH4	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Samunavirus SM1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Septimatrevirus Ab26	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Septimatrevirus kakheti25	6
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Septimatrevirus sv73	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Tabernariusvirus tabernarius	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Beetrevirus	6
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Bruynoghevirus	37
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Casadabanvirus	40
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Detrevirus	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Elvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Harrisonburgvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Hollowayvirus	18
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Kochitakasuvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Krylovvirus	2
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Nankokuvirus	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Nickievirus	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Nipunavirus	3
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Otagovirus	10
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Pakpunavirus	36
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Pamexvirus	4
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Pbunavirus	72
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Petsuvirus	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Phikzvirus	15
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Samunavirus	5
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ unclassified Septimatrevirus	16
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Vicosavirus NV1	1
+d__Viruses|k__ Duplodnaviria|p__ Heunggongvirae|c__ Uroviricota|o__ Caudoviricetes|f__|g__|s__ Vicosavirus UFVP2	1
+d__Viruses|k__ Monodnaviria	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes|f__ Tubulavirales	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes|f__ Tubulavirales|g__ Inoviridae	5
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes|f__ Tubulavirales|g__ Inoviridae|s__	3
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes|f__ Tubulavirales|g__ Inoviridae|s__ Primolicivirus Pf8	1
+d__Viruses|k__ Monodnaviria|p__ Loebvirae|c__ Hofneiviricota|o__ Faserviricetes|f__ Tubulavirales|g__ Inoviridae|s__ Tertilicivirus Pf3	1
+d__Viruses|k__ Riboviria	10
+d__Viruses|k__ Riboviria|p__ Orthornavirae	10
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota	7
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes	7
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales	7
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae	7
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phi12	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phi13	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phi2954	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phi6	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phi8	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phiNN	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Duplornaviricota|o__ Vidaverviricetes|f__ Mindivirales|g__ Cystoviridae|s__ Cystovirus phiYY	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota	3
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes	3
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes|f__ Norzivirales	3
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes|f__ Norzivirales|g__ Fiersviridae	3
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes|f__ Norzivirales|g__ Fiersviridae|s__ Pepevirus rubrum	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes|f__ Norzivirales|g__ Fiersviridae|s__ Pepevirus spumicola	1
+d__Viruses|k__ Riboviria|p__ Orthornavirae|c__ Lenarviricota|o__ Leviviricetes|f__ Norzivirales|g__ Fiersviridae|s__ Perrunavirus olsenii	1
+d__Viruses|k__ unclassified bacterial viruses	2
+d__Viruses|k__ unclassified bacterial viruses|p__	2
+d__Viruses|k__ unclassified bacterial viruses|p__|c__	2
+d__Viruses|k__ unclassified bacterial viruses|p__|c__|o__	2
+d__Viruses|k__ unclassified bacterial viruses|p__|c__|o__|f__	2
+d__Viruses|k__ unclassified bacterial viruses|p__|c__|o__|f__|g__	2
+d__Viruses|k__ unclassified bacterial viruses|p__|c__|o__|f__|g__|s__	2
+d__Viruses|k__ Varidnaviria	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae|c__ Preplasmiviricota	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae|c__ Preplasmiviricota|o__ Tectiliviricetes	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae|c__ Preplasmiviricota|o__ Tectiliviricetes|f__ Kalamavirales	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae|c__ Preplasmiviricota|o__ Tectiliviricetes|f__ Kalamavirales|g__ Tectiviridae	1
+d__Viruses|k__ Varidnaviria|p__ Bamfordvirae|c__ Preplasmiviricota|o__ Tectiliviricetes|f__ Kalamavirales|g__ Tectiviridae|s__ Alphatectivirus PRD1	1
