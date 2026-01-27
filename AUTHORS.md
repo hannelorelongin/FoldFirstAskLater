@@ -1,13 +1,14 @@
 Credits
 =======
 
-Development Leads
-----------------
+Phold Development Leads
+-----------------------
 
-* George Bouras <george.bouras@adelaide.edu.au>
-* Susanna R. Grigson <susie.grigson@gmail.com>
+* George Bouras [GitHub: @georgebouras](https://github.com/georgebouras)
+* Susanna R. Grigson [GitHub: @susiegriggo](https://github.com/susiegriggo)
 
 
-Other Contributors
-------------
+Fold First, Ask Later Development Leads
+---------------------------------------
+* Hannelore Longin [GitHub: @hannelorelongin](https://github.com/hannelorelongin)
 
