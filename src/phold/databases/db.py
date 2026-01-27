@@ -522,3 +522,44 @@ def foldseek_makepaddedseqdb(db_dir: Path) -> None:
     )
 
     ExternalTool.run_tool(foldseek_makepaddedseqdb)
+
+def foldseek_downloaddb(og_db_name: str, db_dir: Path, tmp_dir: Path) -> None:
+    """FoldFirstAskLater specific function to download FoldSeek database."""
+
+    db_dir = Path(db_dir).resolve()
+    tmp_dir = Path(tmp_dir).resolve()
+    logdir = Path(db_dir) / "logdir"
+    db_name = os.path.join(db_dir, og_db_name)
+
+    if db_dir.exists():
+        remove_directory(db_dir)
+    if tmp_dir.exists():
+        remove_directory(tmp_dir)
+
+    foldseek_downloaddb = ExternalTool(
+        tool="foldseek",
+        input="",
+        output="",
+        params=f"databases {og_db_name} {db_name} {tmp_dir} --remove-tmp-files",
+        logdir=logdir,
+    )
+
+    ExternalTool.run_tool(foldseek_downloaddb)
+
+def check_foldseek_db_installation(og_db_name: str, db_dir: Path) -> bool:
+    """FoldFirstAskLater specific function to check FoldSeek database installation."""
+
+    db_dir = Path(db_dir).resolve()
+    db_name = os.path.join(db_dir, og_db_name)
+    logdir = Path(db_dir) / "logdir"
+
+    foldseek_dbtype = ExternalTool(
+        tool="foldseek",
+        input="",
+        output="",
+        params=f"dbtype {db_name} ",
+        logdir=logdir,
+    )
+
+    ExternalTool.run_tool(foldseek_dbtype)
+    
