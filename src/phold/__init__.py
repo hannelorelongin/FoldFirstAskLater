@@ -9,7 +9,7 @@ from Bio.SeqFeature import FeatureLocation, SeqFeature
 from loguru import logger
 from pycirclize.parser import Genbank
 
-from phold.databases.db import install_database, validate_db
+from phold.databases.db import install_all_databases, validate_all_databases
 from phold.features.create_foldseek_db import generate_foldseek_db_from_aa_3di
 from phold.features.predict_3Di import get_T5_model
 from phold.features.query_remote_3Di import query_remote_3di
@@ -330,7 +330,7 @@ def run(
     check_dependencies()
 
     # check the database is installed and return it
-    database = validate_db(database, DB_DIR, foldseek_gpu)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu)
 
     # validate input
     fasta_flag, gb_dict, method = validate_input(input, threads)
@@ -496,7 +496,7 @@ def predict(
     start_time = begin_phold(params, "predict")
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu=False)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
 
     # validate input
     fasta_flag, gb_dict, method = validate_input(input, threads)
@@ -661,7 +661,7 @@ def compare(
     check_dependencies()
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu)
 
     # validate fasta
     fasta_flag, gb_dict, method = validate_input(input, threads)
@@ -768,7 +768,7 @@ def proteins_predict(
     start_time = begin_phold(params, "proteins-predict")
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu=False)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
 
     # Dictionary to store the records
     cds_dict = {}
@@ -966,7 +966,7 @@ def proteins_compare(
     check_dependencies()
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu)
 
     # Dictionary to store the records
     cds_dict = {}
@@ -1105,7 +1105,7 @@ def remote(
     check_dependencies()
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu=False)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
 
     # validate input
     fasta_flag, gb_dict, method = validate_input(input, threads)
@@ -1366,7 +1366,7 @@ def install(
     logger.info(f"ProstT5 model downloaded")
 
     # will check if db is present, and if not, download it
-    install_database(database, foldseek_gpu, extended_db, threads)
+    install_all_databases(database, foldseek_gpu, extended_db, threads)
 
 
 @main_cli.command()
@@ -1678,7 +1678,7 @@ def autotune(
     start_time = begin_phold(params, "autotune")
 
     # check the database is installed
-    database = validate_db(database, DB_DIR, foldseek_gpu=False)
+    database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
 
     if input:
         input_path = input

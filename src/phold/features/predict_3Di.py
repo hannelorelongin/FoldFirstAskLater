@@ -22,7 +22,7 @@ from torch import nn
 from tqdm import tqdm
 from transformers import T5EncoderModel, T5Tokenizer
 
-from phold.databases.db import check_prostT5_download, download_zenodo_prostT5
+from phold.databases.phold_dbs import check_prostT5_download, download_zenodo_prostT5
 from phold.utils.constants import CNN_DIR
 
 

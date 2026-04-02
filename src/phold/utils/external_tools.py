@@ -64,7 +64,7 @@ class ExternalTool:
             )
 
             for line in process.stdout:
-                print(line, end="")  # Live output to terminal
+                print(line, end="", flush=True)  # Live output to terminal
                 stdout_fh.write(line)  # Also write to stdout log
 
             process.stdout.close()
