@@ -10,6 +10,7 @@ from Bio.SeqFeature import SeqFeature
 from Bio.SeqRecord import SeqRecord
 from loguru import logger
 
+from phold.databases.ffal_dbs import ffal_databases
 from phold.features.create_foldseek_db import (
     generate_foldseek_db_from_aa_3di, generate_foldseek_db_from_structures)
 from phold.features.run_foldseek import create_result_tsv, run_foldseek_search
@@ -274,24 +275,23 @@ def subcommand_compare(
 
         short_db_name = prefix
 
-        # #  db search - not clustered
+        # making sure the user provided prefix is not a db name
 
         database_name = "all_phold_structures"
 
         if clustered_db:
             database_name = "all_phold_structures_clustered_searchDB"
 
+        forbidden_names = [database_name, *ffal_databases.values()]
 
-
-        if short_db_name == database_name:
+        if short_db_name in forbidden_names:
             logger.error(
-                f"Please choose a different {prefix} as this conflicts with the {database_name}"
+                f"Please choose a different prefix (current prefix:{prefix}) as this conflicts with one of the default database names ({', '.join(forbidden_names)})."
             )
 
         #####
-        # foldseek search
+        # foldseek search - Phold db
         #####
-
 
         query_db: Path = Path(foldseek_query_db_path) / short_db_name
         target_db: Path = Path(database) / database_name
@@ -299,7 +299,7 @@ def subcommand_compare(
         # make result and temp dirs
         result_db_base: Path = Path(output) / "result_db"
         result_db_base.mkdir(parents=True, exist_ok=True)
-        result_db: Path = Path(result_db_base) / "result_db"
+        result_db: Path = Path(result_db_base) / "result_db_phold"
 
         temp_db: Path = Path(output) / "temp_db"
         temp_db.mkdir(parents=True, exist_ok=True)
@@ -328,6 +328,38 @@ def subcommand_compare(
         
         create_result_tsv(query_db, target_db, result_db, result_tsv, logdir, foldseek_gpu, structures, threads)
 
+    #####
+    # foldseek search - Fold First Ask Later dbs
+    #####
+
+    for ffal_db_name in ffal_databases.values():
+
+        # target db paths
+        target_db: Path = Path(database) / ffal_db_name
+
+        # make result and temp dirs
+        result_db_ffal: Path = Path(result_db_base) / f"result_db_{ffal_db_name}"
+        result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
+
+        # run search
+        run_foldseek_search(
+            query_db,
+            target_db,
+            result_db_ffal,
+            temp_db,
+            threads,
+            logdir,
+            evalue,
+            sensitivity,
+            max_seqs,
+            ultra_sensitive,
+            extra_foldseek_params,
+            foldseek_gpu,
+            structures,
+            clustered_db=False,  # no custom db cluster searching
+        )
+
+        create_result_tsv(query_db, target_db, result_db_ffal, result_tsv_ffal, logdir, foldseek_gpu, structures, threads)
 
    # restart
 

@@ -5,7 +5,8 @@ Fold First, Ask Later is a structure-informed phage protein annotation pipeline 
 Fold First, Ask Later is currently under development, and this branch should be used with caution. 
 
 This branch currently expands Phold by:
-* code support for FoldSeek database install
+* code support for FoldSeek database installs, and default installation of PDB and AlphaFold database (UniProt50, minimal version)
+* code support for FoldSeek searches against the PDB and AlphaFold database by default (no processing of hits yet)
 
 ## Acknowledgements
 
