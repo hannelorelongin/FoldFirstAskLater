@@ -177,7 +177,7 @@ def compare_options(func):
         click.option(
             "--keep_tmp_files",
             is_flag=True,
-            help="Keep temporary intermediate files, particularly the large foldseek_results.tsv of all Foldseek hits",
+            help="Keep temporary intermediate files, particularly the large tsv files of all Foldseek hits",
         ),
         click.option(
             "--card_vfdb_evalue",
@@ -213,9 +213,19 @@ def compare_options(func):
             help="Use this to enable compatibility with Foldseek-GPU search acceleration",
         ),
         click.option(
+            "--uniprot",
+            is_flag=True,
+            help="Use this to fetch up-to-date protein information from UniProt",
+        ),
+        click.option(
+            "--offline",
+            is_flag=True,
+            help="Use this to run phold in offline mode, not fetching any information through APIs.",
+        ),
+        click.option(
             "--restart",
             is_flag=True,
-            help="Use this to restart phold from 'Processing Foldseek output' after foldseek_results.tsv is generated",
+            help="Use this to restart phold from 'Processing Foldseek output' after FoldSeek results tsv file is generated",
 )
     ]
     for option in reversed(options):
@@ -282,6 +292,8 @@ def run(
     hyps,
     finetune,
     vanilla,
+    uniprot,
+    offline,
     restart,
     **kwargs,
 ):
@@ -320,6 +332,8 @@ def run(
         "--hyps": hyps,
         "--finetune": finetune,
         "--vanilla": vanilla,
+        "--uniprot": uniprot,
+        "--offline": offline,
         "--restart": restart
     }
 
@@ -415,6 +429,8 @@ def run(
         extra_foldseek_params=extra_foldseek_params,
         custom_db=custom_db,
         foldseek_gpu=foldseek_gpu,
+        uniprot=uniprot,
+        offline=offline,
         restart=restart
     )
 
@@ -618,6 +634,8 @@ def compare(
     extra_foldseek_params,
     custom_db,
     foldseek_gpu,
+    uniprot,
+    offline,
     restart,
     **kwargs,
 ):
@@ -651,6 +669,8 @@ def compare(
         "--extra_foldseek_params": extra_foldseek_params,
         "--custom_db": custom_db,
         "--foldseek_gpu": foldseek_gpu,
+        "--uniprot": uniprot,
+        "--offline": offline,
         "--restart": restart
     }
 
@@ -689,6 +709,8 @@ def compare(
         extra_foldseek_params=extra_foldseek_params,
         custom_db=custom_db,
         foldseek_gpu=foldseek_gpu,
+        uniprot=uniprot,
+        offline=offline,
         restart=restart
     )
 
@@ -924,6 +946,8 @@ def proteins_compare(
     extra_foldseek_params,
     custom_db,
     foldseek_gpu,
+    uniprot,
+    offline,
     restart,
     **kwargs
 ):
@@ -956,6 +980,8 @@ def proteins_compare(
         "--extra_foldseek_params": extra_foldseek_params,
         "--custom_db": custom_db,
         "--foldseek_gpu": foldseek_gpu,
+        "--uniprot": uniprot,
+        "--offline": offline,
         "--restart": restart
     }
 
@@ -1024,6 +1050,8 @@ def proteins_compare(
         extra_foldseek_params=extra_foldseek_params,
         custom_db=custom_db,
         foldseek_gpu=foldseek_gpu,
+        uniprot=uniprot,
+        offline=offline,
         restart=restart
     )
 
@@ -1070,6 +1098,7 @@ def remote(
     ultra_sensitive,
     extra_foldseek_params,
     custom_db,
+    uniprot,
     **kwargs,
 ):
     """Uses Foldseek API to run ProstT5 then Foldseek locally"""
@@ -1096,6 +1125,7 @@ def remote(
         "--ultra_sensitive": ultra_sensitive,
         "--extra_foldseek_params": extra_foldseek_params,
         "--custom_db": custom_db,
+        "--uniprot": uniprot,
     }
 
     # initial logging etc
@@ -1175,6 +1205,8 @@ def remote(
         ultra_sensitive=ultra_sensitive,
         extra_foldseek_params=extra_foldseek_params,
         custom_db=custom_db,
+        uniprot=uniprot,
+        offline=False, # doesn't make sense for remote to not query APIs when you are doing API calls already
         foldseek_gpu=False,  # doesn't make sense for remote to do this as you wouldn't probably have a GPU
     )
 
@@ -1337,16 +1369,16 @@ def install(
     threads,
     **kwargs,
 ):
-    """Installs ProstT5 model and phold database - active dev here"""
+    """Installs ProstT5 model and phold database"""
 
     if database is not None:
         logger.info(
-            f"You have specified the {database} directory to store the Phold database and ProstT5 model"
+            f"You have specified the {database} directory to store the structure databases and ProstT5 model"
         )
         database: Path = Path(database)
     else:
         logger.info(
-            f"Downloading the Phold database into the default directory {DB_DIR}"
+            f"Downloading the structure databases into the default directory {DB_DIR}"
         )
         database = Path(DB_DIR)
 

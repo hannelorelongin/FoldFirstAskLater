@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Original Phold FoldSeek search + parsing of hits code, now stripped from the custom db parsing functions.
+# Its functions are simply copied from the original Phold database functions in https://github.com/gbouras13/phold/blob/main/src/phold/results/topfunction.py.
+
 import copy
 from pathlib import Path
 from typing import Dict, Tuple, Union
@@ -32,7 +36,7 @@ def get_topfunctions(
             2. DataFrame containing weighted bitscores for different functions.
     """
 
-    logger.info("Processing Foldseek output")
+    logger.info("Processing Phold Foldseek output")
 
     if structures:
 
@@ -533,89 +537,6 @@ def initialize_function_counts_dict(
 
     return count_dict
 
-
-#####
-# custom db
-#####
-
-
-def get_topcustom_hits(
-    result_tsv: Path,
-    structures: bool,
-    proteins_flag: bool,
-) -> pd.DataFrame:
-    """
-    Process Foldseek output to extract top hits for custom searches
-
-    Args:
-        result_tsv (Path): Path to the Foldseek custom result TSV file.
-        structures (bool): Flag indicating whether structures have been added.
-        proteins_flag (bool): Flag indicating whether proteins are used.
-
-    Returns:
-        pd.DataFrame: DataFrame containing the top hits extracted from the custom Foldseek output.
-    """
-
-    logger.info("Processing Foldseek output")
-
-    col_list = [
-        "query",
-        "target",
-        "bitscore",
-        "fident",
-        "evalue",
-        "qStart",
-        "qEnd",
-        "qLen",
-        "tStart",
-        "tEnd",
-        "tLen",
-    ]
-
-    # tmscore and lddt computed
-    if structures:
-        col_list += ["alntmscore", "lddt"]
-
-    foldseek_df = pd.read_csv(
-        result_tsv, delimiter="\t", index_col=False, names=col_list
-    )
-
-    # in case the foldseek output is empty
-    if foldseek_df.empty:
-        logger.warning(
-            "Foldseek found no custom hits whatsoever - please check your custom database and input."
-        )
-        logger.warning("Phold will continue using only the default databases.")
-
-    # issue #86 - convert all ~PIPE~ back to |
-    foldseek_df["query"] = foldseek_df["query"].str.replace("~PIPE~", "|", regex=False)
-
-    # gets the cds
-    if structures is False and proteins_flag is False:
-        # prostt5
-        foldseek_df[["contig_id", "cds_id"]] = foldseek_df["query"].str.split(
-            ":", expand=True, n=1
-        )
-        # dont need it
-        foldseek_df.drop(columns=["contig_id"], inplace=True)
-    # structures or proteins_flag or both
-    else:
-        foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".pdb", "")
-        foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".cif", "")
-
-    # clean up pdb/cif suffixes - target will be the hit
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".pdb", "")
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".cif", "")
-    # split the target column as this will have phrog:protein
-
-    tophit_custom_df = foldseek_df.loc[
-        foldseek_df.groupby("query")["evalue"].idxmin()
-    ].reset_index(drop=True)
-
-    # dont need query or contig_id any more
-    tophit_custom_df.drop(columns=["query"], inplace=True)
-
-    return tophit_custom_df
 
 
 def calculate_qcov_tcov(merged_df):

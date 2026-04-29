@@ -89,14 +89,20 @@ def instantiate_dirs(output_dir: Union[str, Path], force: bool, restart: bool = 
 
     if restart:
         logger.info(f"You have specified --restart")
-        logger.info(f"Checking the output directory {output_dir} exists and contains foldseek_results.tsv")
+        logger.info(f"Checking the output directory {output_dir} exists and contains the FoldSeek result tsv files.")
         if Path(output_dir).exists() is False:
             logger.error(f"The output directory {output_dir} does not exist!")
-        foldseek_results_path = Path(output_dir) / "foldseek_results.tsv"
-        if Path(foldseek_results_path).exists() is False:
-            logger.error(f"The foldseek_results.tsv file {foldseek_results_path} does not exist!")
+        foldseek_phold_results_path = Path(output_dir) / "foldseek_results_phold.tsv"
+        foldseek_pdb_results_path = Path(output_dir) / "foldseek_results_pdb.tsv"
+        foldseek_af50m_results_path = Path(output_dir) / "foldseek_results_af50m.tsv"
+        if Path(foldseek_phold_results_path).exists() is False:
+            logger.error(f"The Phold FoldSeek result file {foldseek_phold_results_path} does not exist!")
+        if Path(foldseek_pdb_results_path).exists() is False:
+            logger.error(f"The PDB FoldSeek result file {foldseek_pdb_results_path} does not exist!")
+        if Path(foldseek_af50m_results_path).exists() is False:
+            logger.error(f"The AlphaFold database FoldSeek result file {foldseek_af50m_results_path} does not exist!")
 
-        logger.info(f"The output directory {output_dir} exists and contains foldseek_results.tsv")
+        logger.info(f"The output directory {output_dir} exists and contains the FoldSeek result tsv files.")
 
     else:
 

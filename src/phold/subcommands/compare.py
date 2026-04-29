@@ -16,10 +16,11 @@ from phold.features.create_foldseek_db import (
 from phold.features.run_foldseek import create_result_tsv, run_foldseek_search
 from phold.io.handle_genbank import write_genbank
 from phold.io.sub_db_outputs import create_sub_db_outputs
-from phold.results.topfunction import (calculate_topfunctions_results,
-                                       get_topcustom_hits,
+from phold.results.phold_parsing import (calculate_topfunctions_results,
                                        calculate_qcov_tcov,
                                        get_topfunctions)
+from phold.results.ffal_parsing import get_ffal_hits
+from phold.results.custom_parsing import get_topcustom_hits
 from phold.utils.util import replace_pipe_in_fastq
 
 
@@ -46,6 +47,8 @@ def subcommand_compare(
     extra_foldseek_params: str,
     custom_db: str,
     foldseek_gpu: bool,
+    uniprot: bool = False,
+    offline: bool = False,
     restart: bool = False,
     clustered_db=False # always False - keep the code for compatibility if I ever revert later, but clustered DBs were not better
 
@@ -76,7 +79,9 @@ def subcommand_compare(
         extra_foldseek_params (str): Extra foldseek search parameters
         custom_db (str): Custom foldseek database
         foldseek_gpu (bool): Use Foldseek-GPU acceleration and ungappedprefilter
-        restart (bool): Restart from foldseek_results.tsv
+        uniprot (bool): Flag indicating whether to fetch UniProt information.
+        offline (bool): Flag indicating whether the script is running in offline mode, not fetching any information through APIs.
+        restart (bool): Restart from FoldSeek result tsv files
 
     Returns:
         bool: True if sub-databases are created successfully, False otherwise.
@@ -95,6 +100,11 @@ def subcommand_compare(
     if structure_dir and structures is False:
         logger.error(
             f"You specified --structure_dir but you did not specify --structures. Please check "
+        )
+
+    if uniprot and offline:
+        logger.error(
+            f"You specified --uniprot (fetching additional protein information through the UniProt API) and --offline (which prevents API calls) together, but these are conflicting options. Please check "
         )
 
     if proteins_flag is True:
@@ -305,7 +315,7 @@ def subcommand_compare(
         temp_db.mkdir(parents=True, exist_ok=True)
 
         # make result tsv
-        result_tsv: Path = Path(output) / "foldseek_results.tsv"
+        result_tsv: Path = Path(output) / "foldseek_results_phold.tsv"
 
         # run foldseek search
         run_foldseek_search(
@@ -328,38 +338,47 @@ def subcommand_compare(
         
         create_result_tsv(query_db, target_db, result_db, result_tsv, logdir, foldseek_gpu, structures, threads)
 
-    #####
-    # foldseek search - Fold First Ask Later dbs
-    #####
+        #####
+        # foldseek search - Fold First Ask Later dbs
+        #####
 
-    for ffal_db_name in ffal_databases.values():
+        for ffal_db_name in ffal_databases.values():
 
-        # target db paths
-        target_db: Path = Path(database) / ffal_db_name
+            # target db paths
+            target_db: Path = Path(database) / ffal_db_name
 
-        # make result and temp dirs
-        result_db_ffal: Path = Path(result_db_base) / f"result_db_{ffal_db_name}"
-        result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
+            # make result and temp dirs
+            result_db_ffal: Path = Path(result_db_base) / f"result_db_{ffal_db_name}"
+            result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
 
-        # run search
-        run_foldseek_search(
-            query_db,
-            target_db,
-            result_db_ffal,
-            temp_db,
-            threads,
-            logdir,
-            evalue,
-            sensitivity,
-            max_seqs,
-            ultra_sensitive,
-            extra_foldseek_params,
-            foldseek_gpu,
-            structures,
-            clustered_db=False,  # no custom db cluster searching
-        )
+            # run search
+            run_foldseek_search(
+                query_db,
+                target_db,
+                result_db_ffal,
+                temp_db,
+                threads,
+                logdir,
+                evalue,
+                sensitivity,
+                max_seqs,
+                ultra_sensitive,
+                extra_foldseek_params,
+                foldseek_gpu,
+                structures,
+                clustered_db=False,  # no custom db cluster searching
+            )
 
-        create_result_tsv(query_db, target_db, result_db_ffal, result_tsv_ffal, logdir, foldseek_gpu, structures, threads)
+            create_result_tsv(query_db, target_db, result_db_ffal, result_tsv_ffal, logdir, foldseek_gpu, structures, threads)
+
+            # hit_ffal_df = get_ffal_hits(
+            #     result_tsv_ffal, database, ffal_db_name, structures, proteins_flag, uniprot, offline
+            # )
+
+            # hit_ffal_path: Path = Path(output) / f"{ffal_db_name}_database_hits.tsv"
+            # hit_ffal_df.to_csv(hit_ffal_path, index=False, sep="\t")
+
+
 
    # restart
 
@@ -383,7 +402,7 @@ def subcommand_compare(
     # get top hit with non-unknown function for each CDS
     # also calculate the weighted bitscore df
 
-    result_tsv: Path = Path(output) / "foldseek_results.tsv"
+    result_tsv: Path = Path(output) / "foldseek_results_phold.tsv"
     database_name = "all_phold_structures"
     if clustered_db:
         database_name = "all_phold_structures_clustered_searchDB"
@@ -558,6 +577,19 @@ def subcommand_compare(
     # save
     merged_df_path: Path = Path(output) / f"{prefix}_per_cds_predictions.tsv"
     merged_df.to_csv(merged_df_path, index=False, sep="\t")
+
+    # Fold First Ask Later dbs output
+
+    for ffal_db_name in ffal_databases.values():
+        # path to the FoldSeek results tsv
+        result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
+        # parse the FoldSeek results tsv
+        hit_ffal_df = get_ffal_hits(
+                result_tsv_ffal, database, ffal_db_name, structures, proteins_flag, uniprot, offline
+            )
+        # write output
+        hit_ffal_path: Path = Path(output) / f"{ffal_db_name}_database_hits.tsv"
+        hit_ffal_df.to_csv(hit_ffal_path, index=False, sep="\t")
 
     # custom db output
 

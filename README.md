@@ -7,6 +7,7 @@ Fold First, Ask Later is currently under development, and this branch should be 
 This branch currently expands Phold by:
 * code support for FoldSeek database installs, and default installation of PDB and AlphaFold database (UniProt50, minimal version)
 * code support for FoldSeek searches against the PDB and AlphaFold database by default (no processing of hits yet)
+* code support for PDB (default enabled, can be disabled with --offline) and UniProt API calls (with tag --uniprot) to add additional protein information to search results from searches against the PDB and AlphaFold database 
 
 ## Acknowledgements
 
