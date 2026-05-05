@@ -1,4 +1,4 @@
-name: phold_env
+name: foldfirst_env
 channels:
   - conda-forge
   - bioconda

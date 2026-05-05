@@ -4,16 +4,15 @@ requires = ["setuptools>=61.0", "wheel>=0.37.1"]
 
 [project]
 # https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
-name = "phold"
-version = "1.2.2" # change VERSION too
-description = "Phage Annotations using Protein Structures"
+name = "foldfirst"
+version = "0.1.0" # change VERSION too
+description = "Fold First Ask Later: structure-informed function annotation of phage proteins"
 readme = "README.md"
 requires-python = ">=3.8, <4"
 license = {file = "MIT"}
 authors = [
-    {name = "George Bouras", email = "george.bouras@adelaide.edu.au"}
+    {name = "Hannelore Longin"}
 ]
-keywords = ["keyword", "are", "cool"]
 
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -55,11 +54,10 @@ dependencies = [
     ]
 
 [project.scripts]
-phold = 'phold:main'
+foldfirst = 'foldfirst:main'
 
 [project.urls]
-"Homepage" = "https://github.com/gbouras13/phold"
-"Documentation" = "https://phold.readthedocs.io/en/latest"
+"Homepage" = "https://github.com/hannelorelongin/FoldFirstAskLater"
 
 
 [project.optional-dependencies]
@@ -80,5 +78,5 @@ include-package-data = true
 zip-safe = true  # This just means it's safe to zip up the bdist
 
 [tool.setuptools.package-data]
-phold = ["features/autotune_data/*.fasta"]
+foldfirst = ["features/autotune_data/*.fasta"]
 

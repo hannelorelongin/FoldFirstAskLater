@@ -19,7 +19,7 @@ from Bio.SeqFeature import FeatureLocation, SeqFeature
 from Bio.SeqRecord import SeqRecord
 from loguru import logger
 
-from phold.utils.util import get_version
+from foldfirst.utils.util import get_version
 
 # imports
 
@@ -83,7 +83,7 @@ def get_genbank(genbank: Path) -> dict:
         for line in handle:
             if any(line.startswith(field) and ":" in line for field in suspicious_fields):
                 logger.error(
-                    f"{genbank} contains a colon ':' in a {line.split()[0]} line: '{line.strip()}'. Please remove ':' from all input FASTA headers before running Phold (or Pharokka beforehand)."
+                    f"{genbank} contains a colon ':' in a {line.split()[0]} line: '{line.strip()}'. Please remove ':' from all input FASTA headers before running foldfirst (or Pharokka beforehand)."
                 )
         handle.seek(0)
 
@@ -115,7 +115,7 @@ def get_genbank(genbank: Path) -> dict:
             # Check if 'Bakta' appears in the Comment - will appear there
             if "Bakta" in comment and "locus_tag" in cds_feature.qualifiers:
                 logger.info(
-                    f"Detected Bakta style input Genbank. Using locus_tag qualifier from Bakta as the CDS IDs for Phold."
+                    f"Detected Bakta style input Genbank. Using locus_tag qualifier from Bakta as the CDS IDs for Fold First Ask Later."
                 )
                 method = "Bakta"
             else:
@@ -124,14 +124,14 @@ def get_genbank(genbank: Path) -> dict:
                     and "protein_id" in cds_feature.qualifiers
                 ):
                     logger.info(
-                        f"Detected NCBI Refseq style input Genbank. Using protein_id qualifier as the CDS IDs for Phold."
+                        f"Detected NCBI Refseq style input Genbank. Using protein_id qualifier as the CDS IDs for Fold First Ask Later."
                     )
                     method = "NCBI"
                 elif (
                     "phrog" in cds_feature.qualifiers and "ID" in cds_feature.qualifiers
                 ):
                     logger.info(
-                        f"Detected Pharokka style input Genbank. Using ID qualifier from Pharokka as the CDS IDs for Phold."
+                        f"Detected Pharokka style input Genbank. Using ID qualifier from Pharokka as the CDS IDs for Fold First Ask Later."
                     )
                     method = "Pharokka"
                 else:
@@ -172,7 +172,7 @@ def identify_long_ids(gb_dict: dict) -> dict:
     for record_id, record in gb_dict.items():
         for cds_feature in record.features:
             try:
-                # if pharokka > 54 char IDs/locus tage, phold/biopython will parse with a space
+                # if pharokka > 54 char IDs/locus tage, foldfirst/biopython will parse with a space
                 # no spaces in
                 # for really long CDS IDs (over 54 chars), a space will be introduced
                 # this is because the ID will go over a second line
@@ -237,7 +237,7 @@ def get_fasta_run_pyrodigal_gv(input: Path, threads: int) -> dict:
     for header in fasta_dict.keys():
         if ":" in header:
             logger.error(
-                f"FASTA header in {input} contains a colon ':': '{header}'. Please remove ':' from all input FASTA headers before running Phold (or Pharokka beforehand)."
+                f"FASTA header in {input} contains a colon ':': '{header}'. Please remove ':' from all input FASTA headers before running foldfirst (or Pharokka beforehand)."
             )
 
     # then run pyrodigal
@@ -344,7 +344,7 @@ def write_genbank(
 
         if not proteins_flag:
             record.annotations["comment"] = (
-                f"Annotated with Phold {version}.\nAnnotation Date: {format_time}.\nURL https://github.com/gbouras13/phold."
+                f"Annotated with Fold First Ask Later {version}.\nAnnotation Date: {format_time}.\nURL https://github.com/hannelorelongin/FoldFirstAskLater."
             )
 
         # Merge updated_cds_dict and non_cds_dict
@@ -508,7 +508,7 @@ def write_genbank(
         )
 
         # only write the gbk if proteins_flag is False
-        output_gbk_path: Path = Path(output) / f"{prefix}.gbk"
+        output_gbk_path: Path = Path(output) / f"{prefix}_phold.gbk"
         with open(output_gbk_path, "w") as output_file:
             SeqIO.write(seq_records, output_file, "genbank")
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from phold.features.predict_3Di import get_embeddings
+from foldfirst.features.predict_3Di import get_embeddings
 
 
 def mask_low_confidence_aa(sequence, scores, threshold=0.5):
@@ -44,7 +44,7 @@ def subcommand_predict(
     hyps: bool,
 ) -> bool:
     """
-    Wrapper command for phold predict. Predicts embeddings using ProstT5 encoder + CNN prediction head.
+    Wrapper command for foldfirst predict. Predicts embeddings using ProstT5 encoder + CNN prediction head.
 
     Args:
         gb_dict (Dict[str, any]): Dictionary containing GenBank records.
@@ -57,7 +57,7 @@ def subcommand_predict(
         model_name (str): Name of the ProstT5 model.
         checkpoint_path (Path): Path to ProstT5 CNN checkpoint.
         batch_size (int): Batch size for prediction.
-        proteins_flag (bool): True if phold proteins-predict, false otherwise
+        proteins_flag (bool): True if foldfirst proteins-predict, false otherwise
         fasta_flag (bool): True if pyrodigal-gv was used to predict CDS from FASTA input. False otherwise
         save_per_residue_embeddings (bool, optional): Whether to save per residue embeddings to h5 file. Defaults to False.
         save_per_protein_embeddings (bool, optional): Whether to save mean per protein embeddings to h5 file. Defaults to False.
@@ -77,14 +77,14 @@ def subcommand_predict(
                 f"You have used --hyps and a Pharokka style input Genbank was detected."
             )
             logger.info(
-                "Only unknown function proteins from your Pharokka input Genbank will be extracted and annotated with Phold."
+                "Only unknown function proteins from your Pharokka input Genbank will be extracted and annotated with foldfirst."
             )
         else:
             logger.warning(
                 "You can specified --hyps but your input Genbank file is not a Pharokka style input Genbank file."
             )
             logger.warning(
-                "Ignoring --hyps: all input CDS will be annotated with Phold."
+                "Ignoring --hyps: all input CDS will be annotated with foldfirst."
             )
 
     fasta_aa: Path = Path(output) / f"{prefix}_aa.fasta"
@@ -187,8 +187,8 @@ def subcommand_predict(
         if "~PIPE~" in record_id:
             logger.error(
                 f"Your FASTA header {record_id} has __PIPE__ in the header. "
-                "Please remove all instances of __PIPE__ in the header before running Phold "
-                "(or Pharokka before Phold)"
+                "Please remove all instances of __PIPE__ in the header before running foldfirst "
+                "(or Pharokka before foldfirst)"
             )
         else:
             record_id = record_id.replace("|", "~PIPE~")

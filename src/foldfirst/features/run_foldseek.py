@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
-from phold.utils.external_tools import ExternalTool
+from foldfirst.utils.external_tools import ExternalTool
 
 
 def run_foldseek_search(

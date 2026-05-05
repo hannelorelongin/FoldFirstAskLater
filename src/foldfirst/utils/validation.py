@@ -8,7 +8,7 @@ from Bio import SeqIO
 from Bio.SeqUtils import IUPACData
 from loguru import logger
 
-from phold.io.handle_genbank import get_fasta_run_pyrodigal_gv, get_genbank
+from foldfirst.io.handle_genbank import get_fasta_run_pyrodigal_gv, get_genbank
 
 
 def validate_input(input: Path, threads: int) -> Dict[str, Union[bool, Dict]]:
@@ -32,12 +32,12 @@ def validate_input(input: Path, threads: int) -> Dict[str, Union[bool, Dict]]:
             f"Now checking if the input {input} is a genome in nucleotide FASTA format"
         )
         logger.warning(f"pyrodigal-gv will be used to predict CDS")
-        logger.warning(f"Phold will not predict tRNAs, tmRNAs or CRISPR repeats")
+        logger.warning(f"Fold First Ask Later will not predict tRNAs, tmRNAs or CRISPR repeats")
         logger.warning(
             f"Please use pharokka https://github.com/gbouras13/pharokka if you would like to predict these"
         )
         logger.warning(
-            f"And then use the genbank output pharokka.gbk as --input for phold"
+            f"And then use the genbank output pharokka.gbk as --input for foldfirst"
         )
 
         # check the contig ids are < 54 chars
@@ -144,7 +144,7 @@ def check_dependencies() -> None:
     try:
         process = sp.Popen(["foldseek", "version"], stdout=sp.PIPE, stderr=sp.STDOUT)
     except:
-        logger.error("Foldseek not found. Please reinstall phold.")
+        logger.error("Foldseek not found. Please reinstall Fold First Ask Later.")
 
     foldseek_out, _ = process.communicate()
     foldseek_out = foldseek_out.decode()
@@ -155,13 +155,13 @@ def check_dependencies() -> None:
         foldseek_major_version = 10
         foldseek_minor_version = "941cd33"
         logger.info(
-        f"Foldseek version found is v{foldseek_major_version}.{foldseek_minor_version}"
+        f"FoldSeek version found is v{foldseek_major_version}.{foldseek_minor_version}"
     )
     else:
-        logger.warning(f"Foldseek version found is v{foldseek_version}")
-        logger.warning(f"Phold is recommended to be run with Foldseek v10.941cd33")
+        logger.warning(f"FoldSeek version found is v{foldseek_version}")
+        logger.warning(f"Fold First Ask Later is recommended to be run with FoldSeek v10.941cd33")
         logger.warning(
-            f"Using a different Foldseek version is likely to work without issue, but this cannot be guaranteed."
+            f"Using a different FoldSeek version is likely to work without issue, but this cannot be guaranteed."
         )
 
 
@@ -171,4 +171,4 @@ def check_dependencies() -> None:
     # if foldseek_minor_version != "941cd33":
     #    logger.error("Foldseek is the wrong version. Please install v10.941cd33")
 
-    logger.info("Foldseek version is ok")
+    logger.info("FoldSeek version is ok")

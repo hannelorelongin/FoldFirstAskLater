@@ -16,12 +16,12 @@ class OrderedCommands(click.Group):
         return list(self.commands)
 
 
-def phold_base(rel_path):
+def foldfirst_base(rel_path):
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), rel_path)
 
 
 def get_version():
-    with open(phold_base("VERSION"), "r") as f:
+    with open(foldfirst_base("VERSION"), "r") as f:
         version = f.readline()
     return version
 
@@ -34,7 +34,7 @@ def echo_click(msg, log=None):
 
 
 def print_citation():
-    with open(phold_base("CITATION"), "r") as f:
+    with open(foldfirst_base("CITATION"), "r") as f:
         for line in f:
             echo_click(line)
 
@@ -49,32 +49,31 @@ begin and end functions
 """
 
 
-def begin_phold(params: Dict[str, Any], subcommand: str) -> float:
+def begin_foldfirst(params: Dict[str, Any], subcommand: str) -> float:
     """
-    Begin Phold process.
+    Begin Fold First Ask Later process.
 
     Parameters:
-        params (Dict[str, Any]): A dictionary of parameters for Phold.
-        subcommand (str): Subcommand indicating the Phold operation.
+        params (Dict[str, Any]): A dictionary of parameters for Fold First Ask Later.
+        subcommand (str): Subcommand indicating the foldfirst operation.
 
     Returns:
-        float: Start time of the Phold process.
+        float: Start time of the foldfirst process.
     """
     # get start time
     start_time = time.time()
     # initial logging stuff
     if subcommand != "autotune":
-        log_file = os.path.join(params["--output"], f"phold_{subcommand}_{start_time}.log")
+        log_file = os.path.join(params["--output"], f"foldfirst_{subcommand}_{start_time}.log")
         # adds log file
         logger.add(log_file)
     logger.add(lambda _: sys.exit(1), level="ERROR")
 
-    print_splash()
-    logger.info("phold: annotating phage genomes with protein structures")
+    logger.info("Fold First Ask Later: structure-informed function annotation of phage proteins")
 
-    logger.info(f"You are using phold version {get_version()}")
-    logger.info("Repository homepage is https://github.com/gbouras13/phold")
-    logger.info(f"You are running phold {subcommand}")
+    logger.info(f"You are using Fold First Ask Later version {get_version()}")
+    logger.info("Repository homepage is https://github.com/hannelorelongin/FoldFirstAskLater")
+    logger.info(f"You are running foldfirst {subcommand}")
     logger.info(f"Listing parameters")
     for key, value in params.items():
         logger.info(f"Parameter: {key} {value}")
@@ -82,13 +81,13 @@ def begin_phold(params: Dict[str, Any], subcommand: str) -> float:
     return start_time
 
 
-def end_phold(start_time: float, subcommand: str) -> None:
+def end_foldfirst(start_time: float, subcommand: str) -> None:
     """
-    Finish Phold process and log elapsed time.
+    Finish Fold First Ask Later process and log elapsed time.
 
     Parameters:
         start_time (float): Start time of the process.
-        subcommand (str): Subcommand name indicating the Phold operation.
+        subcommand (str): Subcommand name indicating the foldfirst operation.
 
     Returns:
         None
@@ -99,25 +98,9 @@ def end_phold(start_time: float, subcommand: str) -> None:
     elapsed_time = round(elapsed_time, 2)
 
     # Show elapsed time for the process
-    logger.info(f"phold {subcommand} has finished")
+    logger.info(f"foldfirst {subcommand} has finished")
     logger.info("Elapsed time: " + str(elapsed_time) + " seconds")
 
-
-# need the logo here eventually
-def print_splash():
-    click.echo(
-        r"""
-
-        .______    __    __    ______    __       _______  
-        |   _  \  |  |  |  |  /  __  \  |  |     |       \ 
-        |  |_)  | |  |__|  | |  |  |  | |  |     |  .--.  |
-        |   ___/  |   __   | |  |  |  | |  |     |  |  |  |
-        |  |      |  |  |  | |  `--'  | |  `----.|  '--'  |
-        | _|      |__|  |__|  \______/  |_______||_______/ 
-
-
-        """
-    )
 
 
 def remove_file(file_path: Path) -> None:
@@ -178,7 +161,7 @@ def replace_pipe_in_fastq(input_path):
 
 def clean_up_temporary_files(output: Path) -> None:
     """
-    Clean up temporary files generated during the Phold process.
+    Clean up temporary files generated during the foldfirst process.
 
     Parameters:
         output (Path): Path to the output directory.

@@ -1,18 +1,198 @@
-# Fold First, Ask Later - Unified structure-informed function annotation of phage proteins.
+# Fold First, Ask Later: structure-informed function annotation of phage proteins
 
 Fold First, Ask Later is a structure-informed phage protein annotation pipeline designed to integrate analyses across multiple [Foldseek](https://github.com/steineggerlab/foldseek)-compatible databases, extending and enhancing the structural annotation capabilities of [Phold](https://github.com/gbouras13/phold).
 
-Fold First, Ask Later is currently under development, and this branch should be used with caution. 
+Fold First, Ask Later is currently under development, and should be used with caution. 
 
 This branch currently expands Phold by:
 * code support for FoldSeek database installs, and default installation of PDB and AlphaFold database (UniProt50, minimal version)
 * code support for FoldSeek searches against the PDB and AlphaFold database by default (no processing of hits yet)
 * code support for PDB (default enabled, can be disabled with --offline) and UniProt API calls (with tag --uniprot) to add additional protein information to search results from searches against the PDB and AlphaFold database 
 
+## Installation
+
+The best way to install `foldfirst` for now is by first installing [Phold](https://github.com/gbouras13/phold) as described by the authors and then installing the code in this repository in the same environment. The current `foldfirst` codebase is up-to-date with Phold v1.2.2, so the install instructions specifically install that version. 
+
+### Step 1 - Phold install
+
+You can install [Phold](https://github.com/gbouras13/phold) using conda via [miniforge](https://github.com/conda-forge/miniforge), as this will install [Foldseek](https://github.com/steineggerlab/foldseek) (the only non-Python dependency) along with the Python dependencies.
+
+To install `phold` using [conda](https://github.com/conda-forge/miniforge):
+
+```bash
+conda create -n foldfirst_env -c conda-forge -c bioconda phold=1.2.2
+```
+
+To utilise `foldfirst` with GPU, a GPU compatible version of `pytorch` must be installed. By default conda will install a CPU-only version. 
+
+If you have an NVIDIA GPU, please try:
+
+```bash
+conda create -n foldfirst_env -c conda-forge -c bioconda phold=1.2.2 pytorch=*=cuda*
+```
+
+If you have a Mac running an Apple Silicon chip (M1/M2/M3/M4), `foldfirst` should be able to use the GPU. Please try:
+
+```bash
+conda create -n foldfirst_env python==3.13  
+conda activate foldfirst_env
+conda install pytorch::pytorch torchvision torchaudio -c pytorch 
+conda install -c conda-forge -c bioconda phold=1.2.2
+```
+
+If you are have a different non-NVIDIA GPU, or have trouble with `pytorch`, see [this link](https://pytorch.org) for more instructions. If you have an older version of CUDA installed, then you might find [this link useful](https://pytorch.org/get-started/previous-versions/).
+
+### Step 2 - Fold First Ask Later install
+
+After installing `phold`, you can now install the code stored in this repository in that environment.
+
+```bash
+git clone https://github.com/hannelorelongin/FoldFirstAskLater.git
+cd FoldFirstAskLater
+conda activate foldfirst_env
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+Once `foldfirst` is installed, to download and install the databases run:
+
+```bash
+foldfirst install -t 8
+```
+
+If you have an NVIDIA GPU and can take advantage of Foldseek's GPU acceleration, instead run
+
+```bash
+foldfirst install -t 8 --foldseek_gpu
+```
+
+* Note: You will need at least 170GB of free space (the `foldfirst` databases including ProstT5 are just over 166GB uncompressed).
+
+## Quick start
+
+* `foldfirst` takes a GenBank format file output from [pharokka](https://github.com/gbouras13/pharokka) or from [NCBI Genbank](https://www.ncbi.nlm.nih.gov/genbank/) as its input by default. 
+* If you are running `foldfirst` on a local work station with GPU available, using `foldfirst run` is recommended. It runs both `foldfirst predict` and `foldfirst compare`
+
+* If you have an NVIDIA GPU available, add `--foldseek_gpu`
+* If you do not have any GPU available, add `--cpu`.
+* `foldfirst run` will run in a reasonable time for small datasets with CPU only (e.g. <5 minutes for a 50kbp phage). With GPU it should complete in under 1 minute.
+* `foldfirst predict` will complete much faster if a GPU is available, and is necessary for large metagenomic datasets to run in a reasonable time. 
+
+* In a cluster environment where GPUs are scarce, for large datasets it may be most efficient to run `foldfirst` in 2 steps for optimal resource usage.
+
+1. Predict the 3Di sequences with ProstT5 using `foldfirst predict`. This is massively accelerated if a GPU available.
+
+2. Compare the the 3Di sequences to the `phold` structure database with Foldseek using `foldfirst compare`. This does not utilise a GPU. 
+
+## Output
+
+* The primary outputs are:
+  * `phold_3di.fasta` containing the 3Di sequences for each CDS
+  * `phold_per_cds_predictions.tsv` containing detailed annotation information on every CDS
+  * `phold_all_cds_functions.tsv` containing counts per contig of CDS in each PHROGs category, VFDB, CARD, ACRDB and Defensefinder databases (similar to the `pharokka_cds_functions.tsv` from Pharokka)
+  * `phold.gbk`, which contains a GenBank format file including these annotations, and keeps any other genomic features (tRNA, CRISPR repeats, tmRNAs) included from the `pharokka` Genbank input file if provided
+  * `pdb_database_hits.tsv`, which contains all FoldSeek hits against the PDB database for each CDS, supplemented by the corresponding protein annotations 
+  * `af50m_database_hits.tsv`, which contains all FoldSeek hits against the AlphaFold database for each CDS, supplemented by the corresponding protein annotations 
+
+## Usage
+
+```bash
+Usage: foldfirst [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -h, --help     Show this message and exit.
+  -V, --version  Show the version and exit.
+
+Commands:
+  autotune          Determines optimal batch size for 3Di prediction with...
+  citation          Print the citation(s) for this tool
+  compare           Runs Foldseek vs Fold First Ask Later databases
+  createdb          Creates foldseek DB from AA FASTA and 3Di FASTA input...
+  install           Installs ProstT5 model and foldfirst databases
+  plot              Creates Fold First Ask Later Circular Genome Plots
+  predict           Uses ProstT5 to predict 3Di tokens - GPU recommended
+  proteins-compare  Runs Foldseek vs Fold First Ask Later databases on...
+  proteins-predict  Runs ProstT5 on a multiFASTA input - GPU recommended
+  remote            Uses Foldseek API to run ProstT5 then Foldseek locally
+  run               foldfirst predict then compare all in one - GPU...
+```
+
+```bash
+Usage: foldfirst run [OPTIONS]
+
+  foldfirst predict then compare all in one - GPU recommended
+
+Options:
+  -h, --help                     Show this message and exit.
+  -V, --version                  Show the version and exit.
+  -i, --input PATH               Path to input file in Genbank format or
+                                 nucleotide FASTA format  [required]
+  -o, --output PATH              Output directory   [default:
+                                 output_foldfirst]
+  -t, --threads INTEGER          Number of threads  [default: 1]
+  -p, --prefix TEXT              Prefix for output files  [default: foldfirst]
+  -d, --database TEXT            Specific path to installed foldfirst
+                                 databases (Phold + PDB +
+                                 AlphaFold/UniProt50-minimal)
+  -f, --force                    Force overwrites the output directory
+  --autotune                     Run autotuning to detect and automatically
+                                 use best batch size for your hardware.
+                                 Recommended only if you have a large dataset
+                                 (e.g. thousands of proteins), or else
+                                 autotuning will add rather than save runtime.
+  --batch_size INTEGER           batch size for ProstT5.  [default: 1]
+  --cpu                          Use cpus only.
+  --omit_probs                   Do not output per residue 3Di probabilities
+                                 from ProstT5. Mean per protein 3Di
+                                 probabilities will always be output.
+  --save_per_residue_embeddings  Save the ProstT5 embeddings per resuide in a
+                                 h5 file
+  --save_per_protein_embeddings  Save the ProstT5 embeddings as means per
+                                 protein in a h5 file
+  --mask_threshold FLOAT         Masks 3Di residues below this value of
+                                 ProstT5 confidence for Foldseek searches
+                                 [default: 25]
+  --finetune                     Use gbouras13/ProstT5Phold encoder + CNN
+                                 model both finetuned on phage proteins
+  --vanilla                      Use vanilla CNN model (trained on CASP14)
+                                 with ProstT5Phold encoder instead of the one
+                                 trained on phage proteins
+  --hyps                         Use this to only annotate hypothetical
+                                 proteins from a Pharokka GenBank input
+  -e, --evalue FLOAT             Evalue threshold for Foldseek  [default:
+                                 1e-3]
+  -s, --sensitivity FLOAT        Sensitivity parameter for FoldSeek  [default:
+                                 9.5]
+  --keep_tmp_files               Keep temporary intermediate files,
+                                 particularly the large tsv files of all
+                                 FoldSeek hits
+  --card_vfdb_evalue FLOAT       Stricter E-value threshold for FoldSeek CARD
+                                 and VFDB hits  [default: 1e-10]
+  --separate                     Output separate GenBank files for each contig
+  --max_seqs INTEGER             Maximum results per query sequence allowed to
+                                 pass the prefilter. You may want to reduce
+                                 this to save disk space for enormous datasets
+                                 [default: 1000]
+  --ultra_sensitive              Runs foldfirst with maximum sensitivity by
+                                 skipping FoldSeek prefilter. Not recommended
+                                 for large datasets.
+  --extra_foldseek_params TEXT   Extra FoldSeek search params
+  --custom_db TEXT               Path to custom database
+  --foldseek_gpu                 Use this to enable compatibility with
+                                 FoldSeek-GPU search acceleration
+  --uniprot                      Use this to fetch up-to-date protein
+                                 information from UniProt
+  --offline                      Use this to run foldfirst in offline mode,
+                                 not fetching any information through APIs.
+  --restart                      Use this to restart foldfirst from
+                                 'Processing FoldSeek output' after FoldSeek
+                                 results tsv file is generated
+  ```
+
 ## Acknowledgements
 
-In Fold First, Ask Later, we adapted and extended functionality from:
-* [Phold](https://github.com/gbouras13/phold) by [George Bouras](https://github.com/georgebouras) and collaborators, available under an [MIT License](https://github.com/gbouras13/phold/blob/main/LICENSE): core protein annotation and structural analysis pipeline.
+In Fold First, Ask Later, we adapted and extended functionality and documentation from:
+* [Phold](https://github.com/gbouras13/phold) by [George Bouras](https://github.com/georgebouras) and collaborators, available under an [MIT License](https://github.com/gbouras13/phold/blob/main/LICENSE): phold protein annotation and structural analysis pipeline.
 
 ## References
 

@@ -55,7 +55,7 @@ def get_topcustom_hits(
         logger.warning(
             "Foldseek found no custom hits whatsoever - please check your custom database and input."
         )
-        logger.warning("Phold will continue using only the default databases.")
+        logger.warning("Fold First Ask Later will continue using only the default databases.")
 
     # issue #86 - convert all ~PIPE~ back to |
     foldseek_df["query"] = foldseek_df["query"].str.replace("~PIPE~", "|", regex=False)

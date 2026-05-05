@@ -22,7 +22,7 @@ sess.mount("https://", adapter)
 # obsolete PDB identifiers
 obsolete_ids = Bio.PDB.PDBList.get_all_obsolete(Bio.PDB.PDBList())
 
-def get_ffal_hits(
+def get_foldfirst_hits(
     result_tsv: Path,
     database: Path,
     database_name: str,
@@ -94,18 +94,18 @@ def get_ffal_hits(
         foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".cif", "")
 
     # read in the mapping tsv
-    ffal_annot_mapping_file: Path = Path(database) / f"{database_name}_h"
-    with open(ffal_annot_mapping_file, "r", encoding = "utf-8-sig") as f:
+    foldfirst_annot_mapping_file: Path = Path(database) / f"{database_name}_h"
+    with open(foldfirst_annot_mapping_file, "r", encoding = "utf-8-sig") as f:
         data = [line.rstrip("\n").split(" ", 1) for line in f if line.strip()]
-    ffal_annot_mapping_df = pd.DataFrame(data, columns=["target", "function"])
-    ffal_annot_mapping_df = ffal_annot_mapping_df.drop_duplicates() # safeguard against duplicates, should not happen
-    ffal_annot_mapping_df["target"] = ffal_annot_mapping_df["target"].astype("str")
-    ffal_annot_mapping_df["target"] = ffal_annot_mapping_df["target"].str.removeprefix("\x00").str.strip() # deal with 0-byte
-    ffal_map = ffal_annot_mapping_df.set_index("target")["function"]
+    foldfirst_annot_mapping_df = pd.DataFrame(data, columns=["target", "function"])
+    foldfirst_annot_mapping_df = foldfirst_annot_mapping_df.drop_duplicates() # safeguard against duplicates, should not happen
+    foldfirst_annot_mapping_df["target"] = foldfirst_annot_mapping_df["target"].astype("str")
+    foldfirst_annot_mapping_df["target"] = foldfirst_annot_mapping_df["target"].str.removeprefix("\x00").str.strip() # deal with 0-byte
+    foldfirst_map = foldfirst_annot_mapping_df.set_index("target")["function"]
 
     # join the dfs using map
     foldseek_df["target"] = foldseek_df["target"].astype("str")
-    foldseek_df["function"] = foldseek_df["target"].map(ffal_map)
+    foldseek_df["function"] = foldseek_df["target"].map(foldfirst_map)
 
     # filling any possible NaNs
     foldseek_df["function"] = foldseek_df["function"].fillna("unknown function")

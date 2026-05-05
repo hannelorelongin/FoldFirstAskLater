@@ -9,20 +9,20 @@ from Bio.SeqFeature import FeatureLocation, SeqFeature
 from loguru import logger
 from pycirclize.parser import Genbank
 
-from phold.databases.db import install_all_databases, validate_all_databases
-from phold.features.create_foldseek_db import generate_foldseek_db_from_aa_3di
-from phold.features.predict_3Di import get_T5_model
-from phold.features.query_remote_3Di import query_remote_3di
-from phold.io.handle_genbank import open_protein_fasta_file
-from phold.plot.plot import create_circos_plot
-from phold.subcommands.compare import subcommand_compare
-from phold.subcommands.predict import subcommand_predict
-from phold.utils.constants import CNN_DIR, DB_DIR
-from phold.utils.util import (begin_phold, clean_up_temporary_files, end_phold,
+from foldfirst.databases.db import install_all_databases, validate_all_databases
+from foldfirst.features.create_foldseek_db import generate_foldseek_db_from_aa_3di
+from foldfirst.features.predict_3Di import get_T5_model
+from foldfirst.features.query_remote_3Di import query_remote_3di
+from foldfirst.io.handle_genbank import open_protein_fasta_file
+from foldfirst.plot.plot import create_circos_plot
+from foldfirst.subcommands.compare import subcommand_compare
+from foldfirst.subcommands.predict import subcommand_predict
+from foldfirst.utils.constants import CNN_DIR, DB_DIR
+from foldfirst.utils.util import (begin_foldfirst, clean_up_temporary_files, end_foldfirst,
                               get_version, print_citation)
-from phold.utils.validation import (check_dependencies, instantiate_dirs,
+from foldfirst.utils.validation import (check_dependencies, instantiate_dirs,
                                     validate_input)
-from phold.features.autotune import run_autotune
+from foldfirst.features.autotune import run_autotune
 from importlib.resources import files
 
 log_fmt = (
@@ -43,7 +43,7 @@ def common_options(func):
         click.option(
             "-o",
             "--output",
-            default="output_phold",
+            default="output_foldfirst",
             show_default=True,
             type=click.Path(),
             help="Output directory ",
@@ -59,7 +59,7 @@ def common_options(func):
         click.option(
             "-p",
             "--prefix",
-            default="phold",
+            default="foldfirst",
             help="Prefix for output files",
             type=str,
             show_default=True,
@@ -69,7 +69,7 @@ def common_options(func):
             "--database",
             type=str,
             default=None,
-            help="Specific path to installed phold database",
+            help="Specific path to installed foldfirst databases (Phold + PDB + AlphaFold/UniProt50-minimal)",
         ),
         click.option(
             "-f",
@@ -170,20 +170,20 @@ def compare_options(func):
             "-s",
             "--sensitivity",
             default="9.5",
-            help="Sensitivity parameter for foldseek",
+            help="Sensitivity parameter for FoldSeek",
             type=float,
             show_default=True,
         ),
         click.option(
             "--keep_tmp_files",
             is_flag=True,
-            help="Keep temporary intermediate files, particularly the large tsv files of all Foldseek hits",
+            help="Keep temporary intermediate files, particularly the large tsv files of all FoldSeek hits",
         ),
         click.option(
             "--card_vfdb_evalue",
             default="1e-10",
             type=float,
-            help="Stricter E-value threshold for Foldseek CARD and VFDB hits",
+            help="Stricter E-value threshold for FoldSeek CARD and VFDB hits",
             show_default=True,
         ),
         click.option(
@@ -201,16 +201,16 @@ def compare_options(func):
         click.option(
             "--ultra_sensitive",
             is_flag=True,
-            help="Runs phold with maximum sensitivity by skipping Foldseek prefilter. Not recommended for large datasets.",
+            help="Runs foldfirst with maximum sensitivity by skipping FoldSeek prefilter. Not recommended for large datasets.",
         ),
         click.option(
-            "--extra_foldseek_params", type=str, help="Extra foldseek search params"
+            "--extra_foldseek_params", type=str, help="Extra FoldSeek search params"
         ),
         click.option("--custom_db", type=str, help="Path to custom database"),
         click.option(
             "--foldseek_gpu",
             is_flag=True,
-            help="Use this to enable compatibility with Foldseek-GPU search acceleration",
+            help="Use this to enable compatibility with FoldSeek-GPU search acceleration",
         ),
         click.option(
             "--uniprot",
@@ -220,12 +220,12 @@ def compare_options(func):
         click.option(
             "--offline",
             is_flag=True,
-            help="Use this to run phold in offline mode, not fetching any information through APIs.",
+            help="Use this to run foldfirst in offline mode, not fetching any information through APIs.",
         ),
         click.option(
             "--restart",
             is_flag=True,
-            help="Use this to restart phold from 'Processing Foldseek output' after FoldSeek results tsv file is generated",
+            help="Use this to restart foldfirst from 'Processing FoldSeek output' after FoldSeek results tsv file is generated",
 )
     ]
     for option in reversed(options):
@@ -297,9 +297,9 @@ def run(
     restart,
     **kwargs,
 ):
-    """phold predict then comapare all in one - GPU recommended"""
+    """foldfirst predict then compare all in one - GPU recommended"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
     instantiate_dirs(output, force, restart)
 
     output: Path = Path(output)
@@ -338,7 +338,7 @@ def run(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "run")
+    start_time = begin_foldfirst(params, "run")
 
     # check foldseek is installed
     check_dependencies()
@@ -351,7 +351,7 @@ def run(
 
 
     if not restart:
-        # phold predict
+        # foldfirst predict
         model_dir = database
         model_name = "Rostlab/ProstT5_fp16"
         checkpoint_path = Path(CNN_DIR) / "cnn_chkpnt" / "model.pt"
@@ -366,7 +366,7 @@ def run(
 
         if autotune:
 
-            input_path = files("phold.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
+            input_path = files("foldfirst.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
 
             step = 20
             min_batch = 1
@@ -404,7 +404,7 @@ def run(
             hyps=hyps,
         )
 
-    # phold compare
+    # foldfirst compare
     # predictions_dir is output as this will be where it lives
     subcommand_compare(
         gb_dict,
@@ -438,8 +438,8 @@ def run(
     if keep_tmp_files is False:
         clean_up_temporary_files(output)
 
-    # end phold
-    end_phold(start_time, "run")
+    # end foldfirst
+    end_foldfirst(start_time, "run")
 
 
 """
@@ -483,7 +483,7 @@ def predict(
 ):
     """Uses ProstT5 to predict 3Di tokens - GPU recommended"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
     instantiate_dirs(output, force, restart=False)
 
     output: Path = Path(output)
@@ -509,7 +509,7 @@ def predict(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "predict")
+    start_time = begin_foldfirst(params, "predict")
 
     # check the database is installed
     database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
@@ -517,7 +517,7 @@ def predict(
     # validate input
     fasta_flag, gb_dict, method = validate_input(input, threads)
 
-    # runs phold predict subcommand
+    # runs foldfirst predict subcommand
     model_dir = database
     model_name = "Rostlab/ProstT5_fp16"
     checkpoint_path = Path(CNN_DIR) / "cnn_chkpnt" / "model.pt"
@@ -532,7 +532,7 @@ def predict(
 
     if autotune:
 
-        input_path = files("phold.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
+        input_path = files("foldfirst.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
 
         step = 20
         min_batch = 1
@@ -570,8 +570,8 @@ def predict(
         hyps=hyps,
     )
 
-    # end phold
-    end_phold(start_time, "predict")
+    # end foldfirst
+    end_foldfirst(start_time, "predict")
 
 
 """
@@ -592,7 +592,7 @@ compare command
 )
 @click.option(
     "--predictions_dir",
-    help="Path to output directory from phold predict",
+    help="Path to output directory from foldfirst predict",
     type=click.Path(),
 )
 @click.option(
@@ -639,9 +639,9 @@ def compare(
     restart,
     **kwargs,
 ):
-    """Runs Foldseek vs phold db"""
+    """Runs Foldseek vs Fold First Ask Later databases"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
 
     instantiate_dirs(output, force, restart)
 
@@ -675,7 +675,7 @@ def compare(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "compare")
+    start_time = begin_foldfirst(params, "compare")
 
     # check foldseek is installed
     check_dependencies()
@@ -718,8 +718,8 @@ def compare(
     if keep_tmp_files is False:
         clean_up_temporary_files(output)
 
-    # end phold
-    end_phold(start_time, "compare")
+    # end foldfirst
+    end_foldfirst(start_time, "compare")
 
 
 """ 
@@ -762,7 +762,7 @@ def proteins_predict(
 ):
     """Runs ProstT5 on a multiFASTA input - GPU recommended"""
 
-    # validates the directory  (need to before phold starts or else no log file is written)
+    # validates the directory  (need to before foldfirst starts or else no log file is written)
     instantiate_dirs(output, force, restart=False)
 
     output: Path = Path(output)
@@ -787,7 +787,7 @@ def proteins_predict(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "proteins-predict")
+    start_time = begin_foldfirst(params, "proteins-predict")
 
     # check the database is installed
     database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
@@ -826,7 +826,7 @@ def proteins_predict(
     if not cds_dict:
         logger.error(f"Error: no AA protein sequences found in {input} file")
 
-    # runs phold predict subcommand
+    # runs foldfirst predict subcommand
     model_dir = database
     model_name = "Rostlab/ProstT5_fp16"
     checkpoint_path = Path(CNN_DIR) / "cnn_chkpnt" / "model.pt"
@@ -844,7 +844,7 @@ def proteins_predict(
 
     if autotune:
 
-        input_path = files("phold.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
+        input_path = files("foldfirst.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
         step = 20
         min_batch = 1
         max_batch = 1001
@@ -881,14 +881,14 @@ def proteins_predict(
         hyps=False,  # always False for this as no Pharokka genbank to parse on input
     )
 
-    # end phold
-    end_phold(start_time, "proteins-predict")
+    # end foldfirst
+    end_foldfirst(start_time, "proteins-predict")
 
 
 """ 
 proteins compare command
 
-Runs Foldseek vs phold DB for multiFASTA 3Di sequences (predicted with proteins-predict)
+Runs Foldseek vs Fold First Ask Later databases for multiFASTA 3Di sequences (predicted with proteins-predict)
 """
 
 
@@ -905,7 +905,7 @@ Runs Foldseek vs phold DB for multiFASTA 3Di sequences (predicted with proteins-
 )
 @click.option(
     "--predictions_dir",
-    help="Path to output directory from phold proteins-predict",
+    help="Path to output directory from foldfirst proteins-predict",
     type=click.Path(),
 )
 @click.option(
@@ -951,9 +951,9 @@ def proteins_compare(
     restart,
     **kwargs
 ):
-    """Runs Foldseek vs phold db on proteins input"""
+    """Runs Foldseek vs Fold First Ask Later databases on proteins input"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
 
     instantiate_dirs(output, force, restart)
 
@@ -986,7 +986,7 @@ def proteins_compare(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "proteins-compare")
+    start_time = begin_foldfirst(params, "proteins-compare")
 
     # check foldseek is installed
     check_dependencies()
@@ -1059,8 +1059,8 @@ def proteins_compare(
     if keep_tmp_files is False:
         clean_up_temporary_files(output)
 
-    # end phold
-    end_phold(start_time, "proteins-compare")
+    # end foldfirst
+    end_foldfirst(start_time, "proteins-compare")
 
 
 """
@@ -1103,7 +1103,7 @@ def remote(
 ):
     """Uses Foldseek API to run ProstT5 then Foldseek locally"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
     instantiate_dirs(output, force, restart=False)
 
     output: Path = Path(output)
@@ -1129,7 +1129,7 @@ def remote(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "remote")
+    start_time = begin_foldfirst(params, "remote")
 
     # check foldseek is installed
     check_dependencies()
@@ -1214,8 +1214,8 @@ def remote(
     if keep_tmp_files is False:
         clean_up_temporary_files(output)
 
-    # end phold
-    end_phold(start_time, "remote")
+    # end foldfirst
+    end_foldfirst(start_time, "remote")
 
 
 """
@@ -1242,7 +1242,7 @@ createdb command
 @click.option(
     "-o",
     "--output",
-    default="output_phold_foldseek_db",
+    default="output_foldfirst_foldseek_db",
     show_default=True,
     type=click.Path(),
     help="Output directory ",
@@ -1258,7 +1258,7 @@ createdb command
 @click.option(
     "-p",
     "--prefix",
-    default="phold_foldseek_db",
+    default="foldfirst_foldseek_db",
     help="Prefix for Foldseek database",
     type=str,
     show_default=True,
@@ -1281,7 +1281,7 @@ def createdb(
 ):
     """Creates foldseek DB from AA FASTA and 3Di FASTA input files"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
     instantiate_dirs(output, force, restart=False)
 
     output: Path = Path(output)
@@ -1297,7 +1297,7 @@ def createdb(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "createdb")
+    start_time = begin_foldfirst(params, "createdb")
 
     # check foldseek is installed
     check_dependencies()
@@ -1318,8 +1318,8 @@ def createdb(
         fasta_aa, fasta_3di, foldseek_query_db_path, logdir, prefix
     )
 
-    # end phold
-    end_phold(start_time, "createdb")
+    # end foldfirst
+    end_foldfirst(start_time, "createdb")
 
 
 """
@@ -1336,7 +1336,7 @@ install command
     "--database",
     type=str,
     default=None,
-    help="Specific path to install the phold database",
+    help="Specific path to install the foldfirst databases (Phold + PDB + AlphaFold/UniProt50-minimal)",
 )
 @click.option(
     "--foldseek_gpu",
@@ -1369,7 +1369,7 @@ def install(
     threads,
     **kwargs,
 ):
-    """Installs ProstT5 model and phold database"""
+    """Installs ProstT5 model and foldfirst databases"""
 
     if database is not None:
         logger.info(
@@ -1408,23 +1408,23 @@ def install(
 @click.option(
     "-i",
     "--input",
-    help="Path to input file in Genbank format (in the phold output directory)",
+    help="Path to input file in Genbank format (in the foldfirst output directory)",
     type=click.Path(),
     required=True,
 )
 @click.option(
     "-o",
     "--output",
-    default="phold_plots",
+    default="foldfirst_plots",
     show_default=True,
     type=click.Path(),
-    help="Output directory to store phold plots",
+    help="Output directory to store foldfirst plots",
 )
 @click.option(
     "-p",
     "--prefix",
-    default="phold",
-    help="Prefix for output files. Needs to match what phold was run with.",
+    default="foldfirst",
+    help="Prefix for output files. Needs to match what foldfirst was run with.",
     type=str,
     show_default=True,
 )
@@ -1512,9 +1512,9 @@ def plot(
     label_ids,
     **kwargs,
 ):
-    """Creates Phold Circular Genome Plots"""
+    """Creates Fold First Ask Later Circular Genome Plots"""
 
-    # validates the directory  (need to before I start phold or else no log file is written)
+    # validates the directory  (need to before I start foldfirst or else no log file is written)
     instantiate_dirs(output, force)
 
     output: Path = Path(output)
@@ -1539,7 +1539,7 @@ def plot(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "plot")
+    start_time = begin_foldfirst(params, "plot")
 
     # single threaded plots
     threads = 1
@@ -1650,7 +1650,7 @@ def plot(
     "--database",
     type=str,
     default=None,
-    help="Specific path to installed phold database",
+    help="Specific path to installed foldfirst database",
 )
 @click.option(
     "--min_batch",
@@ -1707,7 +1707,7 @@ def autotune(
     }
 
     # initial logging etc
-    start_time = begin_phold(params, "autotune")
+    start_time = begin_foldfirst(params, "autotune")
 
     # check the database is installed
     database = validate_all_databases(database, DB_DIR, foldseek_gpu=False)
@@ -1715,7 +1715,7 @@ def autotune(
     if input:
         input_path = input
     else:
-        input_path = files("phold.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
+        input_path = files("foldfirst.features.autotune_data").joinpath("all_phold_structures_5000.fasta.gz")
 
     model_dir = database
     model_name = "Rostlab/ProstT5_fp16"

@@ -15,8 +15,8 @@ from pathlib import Path
 from Bio import SeqIO
 from loguru import logger
 
-from phold.utils.external_tools import ExternalTool
-from phold.utils.util import remove_file
+from foldfirst.utils.external_tools import ExternalTool
+from foldfirst.utils.util import remove_file
 
 
 def generate_foldseek_db_from_aa_3di(
@@ -258,7 +258,7 @@ def create_foldseek_prostt5_gpu_db(
     Args:
         fasta_aa (Path): Path to the amino-acid FASTA file.
         foldseek_db_path (Path): Path to the directory where Foldseek database will be stored.
-        db_dir (Path): Path to the Phold DB
+        db_dir (Path): Path to the Fold First Ask Later databases
         logdir (Path): Path to the directory where logs will be stored.
     Returns:
         None

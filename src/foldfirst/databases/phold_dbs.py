@@ -9,8 +9,8 @@ import requests
 from alive_progress import alive_bar
 from loguru import logger
 
-from phold.utils.external_tools import ExternalTool
-from phold.utils.util import remove_directory
+from foldfirst.utils.external_tools import ExternalTool
+from foldfirst.utils.util import remove_directory
 
 # set this if changes
 CURRENT_DB_VERSION: str = "1.0.0"
@@ -470,11 +470,11 @@ def validate_db(database: str, default_dir: str, foldseek_gpu: bool) -> Path:
     else:
         if database == Path(default_dir):  # default
             logger.error(
-                f"Phold database not found. Please run phold install to download and install the Phold database"
+                f"Phold database not found. Please run foldfirst install to download and install the Phold database"
             )
         else:  # specific
             logger.error(
-                f"Phold database not found. Please run phold install -d {database} to download and install the Phold database"
+                f"Phold database not found. Please run foldfirst install -d {database} to download and install the Phold database"
             )
     if foldseek_gpu:
         if gpu_flag:
@@ -483,7 +483,7 @@ def validate_db(database: str, default_dir: str, foldseek_gpu: bool) -> Path:
             )
         else:
             logger.error(
-                f"Phold database files compatible with Foldseek-GPU not found. Please run phold install -d {database} --foldseek_gpu"
+                f"Phold database files compatible with Foldseek-GPU not found. Please run foldfirst install -d {database} --foldseek_gpu"
             )
 
     return database
@@ -492,7 +492,7 @@ def validate_db(database: str, default_dir: str, foldseek_gpu: bool) -> Path:
 def foldseek_makepaddedseqdb(db_dir: Path, db_name: str) -> None:
     '''
     Slightly modified version of Phold's original function
-    to make it reusable for both Phold and FoldFirstAskLater databases.
+    to make it reusable for both Phold and Fold First Ask Later databases.
     '''
 
     db_search = Path(db_dir) / db_name

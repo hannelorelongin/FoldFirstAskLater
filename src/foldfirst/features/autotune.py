@@ -1,7 +1,7 @@
 
 # autobatch
 
-from phold.features.predict_3Di import  get_T5_model
+from foldfirst.features.predict_3Di import  get_T5_model
 from tqdm import tqdm
 import random
 import torch
@@ -11,7 +11,7 @@ import time
 import math
 from Bio import SeqIO
 from Bio.SeqFeature import FeatureLocation, SeqFeature
-from phold.io.handle_genbank import open_protein_fasta_file
+from foldfirst.io.handle_genbank import open_protein_fasta_file
 
 """
 

@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 from loguru import logger
 
-from phold.utils.util import touch_file
+from foldfirst.utils.util import touch_file
 
 
 def create_sub_db_outputs(
@@ -26,7 +26,7 @@ def create_sub_db_outputs(
         bool: True if the operation is successful.
     """
 
-    sub_db_tophits_dir = Path(output) / "sub_db_tophits"
+    sub_db_tophits_dir = Path(output) / "phold_sub_db_tophits"
     sub_db_tophits_dir.mkdir(parents=True, exist_ok=True)
 
     # acr df

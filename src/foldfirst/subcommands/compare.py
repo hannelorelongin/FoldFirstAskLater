@@ -10,18 +10,18 @@ from Bio.SeqFeature import SeqFeature
 from Bio.SeqRecord import SeqRecord
 from loguru import logger
 
-from phold.databases.ffal_dbs import ffal_databases
-from phold.features.create_foldseek_db import (
+from foldfirst.databases.foldfirst_dbs import foldfirst_databases
+from foldfirst.features.create_foldseek_db import (
     generate_foldseek_db_from_aa_3di, generate_foldseek_db_from_structures)
-from phold.features.run_foldseek import create_result_tsv, run_foldseek_search
-from phold.io.handle_genbank import write_genbank
-from phold.io.sub_db_outputs import create_sub_db_outputs
-from phold.results.phold_parsing import (calculate_topfunctions_results,
+from foldfirst.features.run_foldseek import create_result_tsv, run_foldseek_search
+from foldfirst.io.handle_genbank import write_genbank
+from foldfirst.io.sub_db_outputs import create_sub_db_outputs
+from foldfirst.results.phold_parsing import (calculate_topfunctions_results,
                                        calculate_qcov_tcov,
                                        get_topfunctions)
-from phold.results.ffal_parsing import get_ffal_hits
-from phold.results.custom_parsing import get_topcustom_hits
-from phold.utils.util import replace_pipe_in_fastq
+from foldfirst.results.foldfirst_parsing import get_foldfirst_hits
+from foldfirst.results.custom_parsing import get_topcustom_hits
+from foldfirst.utils.util import replace_pipe_in_fastq
 
 
 def subcommand_compare(
@@ -54,7 +54,7 @@ def subcommand_compare(
 
 ) -> bool:
     """
-    Compare 3Di or PDB structures to the Phold DB
+    Compare 3Di or PDB structures to the Fold First Ask Later databases
 
     Parameters:
         gb_dict (Dict[str, Dict[str, Union[SeqRecord, SeqFeature]]]): Nested dictionary containing genomic data.
@@ -208,28 +208,28 @@ def subcommand_compare(
         fasta_aa: Path = Path(output) / f"{prefix}_aa.fasta"
         fasta_3di: Path = Path(output) / f"{prefix}_3di.fasta"
 
-        ## copy the AA and 3Di from predictions directory if structures is false and phold compare is the command
+        ## copy the AA and 3Di from predictions directory if structures is false and foldfirst compare is the command
         if structures is False:
             # if remote, these will not exist
             if remote_flag is False:
                 if fasta_3di_input.exists():
                     logger.info(
-                        f"Checked that the 3Di CDS file {fasta_3di_input} exists from phold predict"
+                        f"Checked that the 3Di CDS file {fasta_3di_input} exists from foldfirst predict"
                     )
                     shutil.copyfile(fasta_3di_input, fasta_3di)
                 else:
                     logger.error(
-                        f"The 3Di CDS file {fasta_3di_input} does not exist. Please run phold predict and/or check the prediction directory {predictions_dir}"
+                        f"The 3Di CDS file {fasta_3di_input} does not exist. Please run foldfirst predict and/or check the prediction directory {predictions_dir}"
                     )
                 # copy the aa to file
                 if fasta_aa_input.exists():
                     logger.info(
-                        f"Checked that the AA CDS file {fasta_aa_input} exists from phold predict."
+                        f"Checked that the AA CDS file {fasta_aa_input} exists from foldfirst predict."
                     )
                     shutil.copyfile(fasta_aa_input, fasta_aa)
                 else:
                     logger.error(
-                        f"The AA CDS file {fasta_aa_input} does not exist. Please run phold predict and/or check the prediction directory {predictions_dir}"
+                        f"The AA CDS file {fasta_aa_input} does not exist. Please run foldfirst predict and/or check the prediction directory {predictions_dir}"
                     )
         ## write the AAs to file if structures is true because can't just copy from prediction_dir
         else:
@@ -292,7 +292,7 @@ def subcommand_compare(
         if clustered_db:
             database_name = "all_phold_structures_clustered_searchDB"
 
-        forbidden_names = [database_name, *ffal_databases.values()]
+        forbidden_names = [database_name, *foldfirst_databases.values()]
 
         if short_db_name in forbidden_names:
             logger.error(
@@ -335,27 +335,26 @@ def subcommand_compare(
             clustered_db
         )
 
-        
         create_result_tsv(query_db, target_db, result_db, result_tsv, logdir, foldseek_gpu, structures, threads)
 
         #####
         # foldseek search - Fold First Ask Later dbs
         #####
 
-        for ffal_db_name in ffal_databases.values():
+        for foldfirst_db_name in foldfirst_databases.values():
 
             # target db paths
-            target_db: Path = Path(database) / ffal_db_name
+            target_db: Path = Path(database) / foldfirst_db_name
 
             # make result and temp dirs
-            result_db_ffal: Path = Path(result_db_base) / f"result_db_{ffal_db_name}"
-            result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
+            result_db_foldfirst: Path = Path(result_db_base) / f"result_db_{foldfirst_db_name}"
+            result_tsv_foldfirst: Path = Path(output) / f"foldseek_results_{foldfirst_db_name}.tsv"
 
             # run search
             run_foldseek_search(
                 query_db,
                 target_db,
-                result_db_ffal,
+                result_db_foldfirst,
                 temp_db,
                 threads,
                 logdir,
@@ -369,14 +368,7 @@ def subcommand_compare(
                 clustered_db=False,  # no custom db cluster searching
             )
 
-            create_result_tsv(query_db, target_db, result_db_ffal, result_tsv_ffal, logdir, foldseek_gpu, structures, threads)
-
-            # hit_ffal_df = get_ffal_hits(
-            #     result_tsv_ffal, database, ffal_db_name, structures, proteins_flag, uniprot, offline
-            # )
-
-            # hit_ffal_path: Path = Path(output) / f"{ffal_db_name}_database_hits.tsv"
-            # hit_ffal_df.to_csv(hit_ffal_path, index=False, sep="\t")
+            create_result_tsv(query_db, target_db, result_db_foldfirst, result_tsv_foldfirst, logdir, foldseek_gpu, structures, threads)
 
 
 
@@ -483,12 +475,12 @@ def subcommand_compare(
     # add qcov and tcov
     merged_df = calculate_qcov_tcov(merged_df)
 
-    # NEEDS TO READ IN THE f"{prefix}_prostT5_3di_mean_probabilities.csv" - can't pass from the predict function in case using phold compare
-    if predictions_dir is None:  # if running phold run
+    # NEEDS TO READ IN THE f"{prefix}_prostT5_3di_mean_probabilities.csv" - can't pass from the predict function in case using foldfirst compare
+    if predictions_dir is None:  # if running foldfirst run
         mean_probs_out_path: Path = (
             Path(output) / f"{prefix}_prostT5_3di_mean_probabilities.csv"
         )
-    else:  # if running phold compare or phold proteins-compare
+    else:  # if running foldfirst compare or foldfirst proteins-compare
         mean_probs_out_path: Path = (
             Path(predictions_dir) / f"{prefix}_prostT5_3di_mean_probabilities.csv"
         )
@@ -575,21 +567,21 @@ def subcommand_compare(
     merged_df = merged_df.reindex(columns=new_column_order)
 
     # save
-    merged_df_path: Path = Path(output) / f"{prefix}_per_cds_predictions.tsv"
+    merged_df_path: Path = Path(output) / f"{prefix}_phold_per_cds_predictions.tsv"
     merged_df.to_csv(merged_df_path, index=False, sep="\t")
 
     # Fold First Ask Later dbs output
 
-    for ffal_db_name in ffal_databases.values():
+    for foldfirst_db_name in foldfirst_databases.values():
         # path to the FoldSeek results tsv
-        result_tsv_ffal: Path = Path(output) / f"foldseek_results_{ffal_db_name}.tsv"
+        result_tsv_foldfirst: Path = Path(output) / f"foldseek_results_{foldfirst_db_name}.tsv"
         # parse the FoldSeek results tsv
-        hit_ffal_df = get_ffal_hits(
-                result_tsv_ffal, database, ffal_db_name, structures, proteins_flag, uniprot, offline
+        hit_foldfirst_df = get_foldfirst_hits(
+                result_tsv_foldfirst, database, foldfirst_db_name, structures, proteins_flag, uniprot, offline
             )
         # write output
-        hit_ffal_path: Path = Path(output) / f"{ffal_db_name}_database_hits.tsv"
-        hit_ffal_df.to_csv(hit_ffal_path, index=False, sep="\t")
+        hit_foldfirst_path: Path = Path(output) / f"{foldfirst_db_name}_database_hits.tsv"
+        hit_foldfirst_df.to_csv(hit_foldfirst_path, index=False, sep="\t")
 
     # custom db output
 
@@ -823,7 +815,7 @@ def subcommand_compare(
         # combine all contigs into one final df
         description_total_df = pd.concat(functions_list)
 
-        descriptions_total_path: Path = Path(output) / f"{prefix}_all_cds_functions.tsv"
+        descriptions_total_path: Path = Path(output) / f"{prefix}_phold_all_cds_functions.tsv"
         description_total_df.to_csv(descriptions_total_path, index=False, sep="\t")
 
     return sub_dbs_created

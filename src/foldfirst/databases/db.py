@@ -5,12 +5,12 @@
 from pathlib import Path
 from loguru import logger
 
-from phold.databases.phold_dbs import install_database as install_phold_db, validate_db as validate_phold_db
-from phold.databases.ffal_dbs import install_database as install_ffal_db, validate_db as validate_ffal_db
+from foldfirst.databases.phold_dbs import install_database as install_phold_db, validate_db as validate_phold_db
+from foldfirst.databases.foldfirst_dbs import install_database as install_foldfirst_db, validate_db as validate_foldfirst_db
 
 def install_all_databases(db_dir: Path, foldseek_gpu: bool, extended_db: bool, threads: int) -> None:
     """
-    Install all databases (Phold + FoldFirstAskLater) sequentially.
+    Install all databases (Phold + Fold First Ask Later) sequentially.
 
     Args:
         db_dir (Path): root directory for all databases
@@ -26,7 +26,7 @@ def install_all_databases(db_dir: Path, foldseek_gpu: bool, extended_db: bool, t
         logger.info("Phold database installation completed.")
         
         logger.info("Step 2: Installing Fold First Ask Later databases...")
-        install_ffal_db(db_dir, foldseek_gpu, threads)
+        install_foldfirst_db(db_dir, foldseek_gpu, threads)
         logger.info("Fold First Ask Later database installation completed.")
         
         logger.info("All databases installed successfully.")
@@ -37,7 +37,7 @@ def install_all_databases(db_dir: Path, foldseek_gpu: bool, extended_db: bool, t
 
 def validate_all_databases(database: str, default_dir: str, foldseek_gpu: bool) -> Path:
     """
-    Validate the presence of all required databases (Phold + FoldFirstAskLater).
+    Validate the presence of all required databases (Phold + Fold First Ask Later).
 
     Args:
         database (str): path to the root database directory
@@ -54,10 +54,10 @@ def validate_all_databases(database: str, default_dir: str, foldseek_gpu: bool) 
         validated_phold_db = validate_phold_db(database, default_dir, foldseek_gpu)
         
         logger.info("Step 2: Validating Fold First Ask Later databases...")
-        validated_ffal_db = validate_ffal_db(database, default_dir, foldseek_gpu)
+        validated_foldfirst_db = validate_foldfirst_db(database, default_dir, foldseek_gpu)
 
         logger.info("All databases validated successfully.")
-        if validated_phold_db == validated_ffal_db:
+        if validated_phold_db == validated_foldfirst_db:
             return validated_phold_db
         else:
             raise ValueError("Mismatch in validated database paths between Phold and Fold First Ask Later.")
