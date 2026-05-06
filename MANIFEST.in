@@ -1,4 +1,4 @@
-include src/phold/utils/CITATION
-include src/phold/utils/VERSION
-include src/phold/cnn/cnn_chkpnt/*pt
-include src/phold/cnn/cnn_chkpnt_finetune/*pth
+include src/foldfirst/utils/CITATION
+include src/foldfirst/utils/VERSION
+include src/foldfirst/cnn/cnn_chkpnt/*pt
+include src/foldfirst/cnn/cnn_chkpnt_finetune/*pth
