@@ -70,29 +70,9 @@ foldfirst install -t 8 --foldseek_gpu
 
 ## Quick start
 
-* `foldfirst` takes a GenBank format file output from [pharokka](https://github.com/gbouras13/pharokka) or from [NCBI Genbank](https://www.ncbi.nlm.nih.gov/genbank/) as its input by default. 
-* If you are running `foldfirst` on a local work station with GPU available, using `foldfirst run` is recommended. It runs both `foldfirst predict` and `foldfirst compare`
+The default way to run `foldfirst` is by using the `foldfirst run` command, which combines the `foldfirst predict` and `foldfirst compare` commands. By default, a GenBank format file is expected as input. We recommend adding `--foldseek_gpu` if you have a NVIDIA GPU available, if not, add `--cpu`. A GPU will significanlty speed up the `foldfirst predict` stage, and is required for large analyses.  
 
-* If you have an NVIDIA GPU available, add `--foldseek_gpu`
-* If you do not have any GPU available, add `--cpu`.
-* `foldfirst run` will run in a reasonable time for small datasets with CPU only (e.g. <5 minutes for a 50kbp phage). With GPU it should complete in under 1 minute.
-* `foldfirst predict` will complete much faster if a GPU is available, and is necessary for large metagenomic datasets to run in a reasonable time. 
-
-* In a cluster environment where GPUs are scarce, for large datasets it may be most efficient to run `foldfirst` in 2 steps for optimal resource usage.
-
-1. Predict the 3Di sequences with ProstT5 using `foldfirst predict`. This is massively accelerated if a GPU available.
-
-2. Compare the the 3Di sequences to the `phold` structure database with Foldseek using `foldfirst compare`. This does not utilise a GPU. 
-
-## Output
-
-* The primary outputs are:
-  * `phold_3di.fasta` containing the 3Di sequences for each CDS
-  * `phold_per_cds_predictions.tsv` containing detailed annotation information on every CDS
-  * `phold_all_cds_functions.tsv` containing counts per contig of CDS in each PHROGs category, VFDB, CARD, ACRDB and Defensefinder databases (similar to the `pharokka_cds_functions.tsv` from Pharokka)
-  * `phold.gbk`, which contains a GenBank format file including these annotations, and keeps any other genomic features (tRNA, CRISPR repeats, tmRNAs) included from the `pharokka` Genbank input file if provided
-  * `pdb_database_hits.tsv`, which contains all FoldSeek hits against the PDB database for each CDS, supplemented by the corresponding protein annotations 
-  * `af50m_database_hits.tsv`, which contains all FoldSeek hits against the AlphaFold database for each CDS, supplemented by the corresponding protein annotations 
+You can see more options to costumize and optimize your `foldfirst run` command by running `foldfirst run -h`.
 
 ## Usage
 
@@ -189,6 +169,16 @@ Options:
                                  results tsv file is generated
   ```
 
+## Output
+
+* The primary outputs are:
+  * `foldfirst_3di.fasta` containing the 3Di sequences for each CDS
+  * `foldfirst_phold_per_cds_predictions.tsv` containing detailed annotation information on every CDS as obtained by Phold
+  * `foldfirst_phold_all_cds_functions.tsv` containing counts per contig of CDS in each PHROGs category, VFDB, CARD, ACRDB and Defensefinder databases as obtained by Phold (similar to the `pharokka_cds_functions.tsv` from Pharokka)
+  * `foldfirst_phold.gbk`, which contains a GenBank format file including the annotations obtained by Phold, and keeps any other genomic features (tRNA, CRISPR repeats, tmRNAs) included from the `pharokka` Genbank input file if provided
+  * `pdb_database_hits.tsv`, which contains all FoldSeek hits against the PDB database for each CDS, supplemented by the corresponding protein annotations 
+  * `af50m_database_hits.tsv`, which contains all FoldSeek hits against the AlphaFold database for each CDS, supplemented by the corresponding protein annotations 
+
 ## Acknowledgements
 
 In Fold First, Ask Later, we adapted and extended functionality and documentation from:
@@ -196,24 +186,24 @@ In Fold First, Ask Later, we adapted and extended functionality and documentatio
 
 ## References
 
-While tool development is still ongoing, Fold First, Ask Later users can cite the original preprint:
-*  Longin H, Bouras G, Grigson SR, Edwards RA, Hendrix H, Lavigne R, van Noort V:"Fold first, ask later: structure-informed function prediction in Pseudomonas phages" Preprint at bioRxiv [https://doi.org/10.1101/2025.07.17.665397](https://doi.org/10.1101/2025.07.17.665397).
+While tool development is still ongoing, Fold First, Ask Later users can cite the original preprint, as well as Phold:
+*  Longin H, Bouras G, Grigson SR, Edwards RA, Hendrix H, Lavigne R, van Noort V. "Fold first, ask later: structure-informed function prediction in Pseudomonas phages." Preprint at bioRxiv [https://doi.org/10.1101/2025.07.17.665397](https://doi.org/10.1101/2025.07.17.665397).
+* Bouras G, Grigson SR, Mirdita M, Heinzinger M, Papudeshi B, Mallawaarachchi V, Green R, Kim SR, Mihalia V, Psaltis AJ, Wormald P-J, Vreugde S, Steinegger M, Edwards RA. "Protein Structure Informed Bacteriophage Genome Annotation with Phold." Nucleic Acids Research (2026) [https://doi.org/10.1093/nar/gkaf1448](https://doi.org/10.1093/nar/gkaf1448)
 
 Please be sure to cite the following core dependencies - citing all bioinformatics tools that you use helps us, so helps you get better bioinformatics tools:
 
-* Bouras G, Grigson SR, Mirdita M, Heinzinger M, Papudeshi B, Mallawaarachchi V, Green R, Kim SR, Mihalia V, Psaltis AJ, Wormald P-J, Vreugde S, Steinegger M, Edwards RA: "Protein Structure Informed Bacteriophage Genome Annotation with Phold", Nucleic Acids Research, Volume 54, Issue 1, 13 January 2026, gkaf1448, [https://doi.org/10.1093/nar/gkaf1448](https://doi.org/10.1093/nar/gkaf1448)
-
-* Pharokka - (https://github.com/gbouras13/pharokka) [Bouras G, Nepal R, Houtak G, Psaltis AJ, Wormald P-J, Vreugde S. Pharokka: a fast scalable bacteriophage annotation tool. Bioinformatics, Volume 39, Issue 1, January 2023, btac776](https://doi.org/10.1093/bioinformatics/btac776)
-* Foldseek - (https://github.com/steineggerlab/foldseek) [van Kempen M, Kim S, Tumescheit C, Mirdita M, Lee J, Gilchrist C, Söding J, and Steinegger M. Fast and accurate protein structure search with Foldseek. Nature Biotechnology (2023), [doi:10.1038/s41587-023-01773-0 ](https://www.nature.com/articles/s41587-023-01773-0)
-* ProstT5 - (https://github.com/mheinzinger/ProstT5) [Michael Heinzinger, Konstantin Weissenow, Joaquin Gomez Sanchez, Adrian Henkel, Martin Steinegger, Burkhard Rost. ProstT5: Bilingual language model for protein sequence and structure. NAR Genomics and Bioinformatics (2024) [doi:10.1101/2023.07.23.550085](https://doi.org/10.1093/nargab/lqae150) 
-* Colabfold - (https://github.com/sokrypton/ColabFold) [Mirdita M, Schütze K, Moriwaki Y, Heo L, Ovchinnikov S and Steinegger M. ColabFold: Making protein folding accessible to all. Nature Methods (2022) [doi: 10.1038/s41592-022-01488-1 ](https://www.nature.com/articles/s41592-022-01488-1)
-* PHROGs - (https://phrogs.lmge.uca.fr) [Terzian P., Olo Ndela E., Galiez C., Lossouarn J., Pérez Bucio R.E., Mom R., Toussaint A., Petit M.A., Enault F., "PHROG : families of prokaryotic virus proteins clustered using remote homology", NAR Genomics and Bioinformatics, (2021) [https://doi.org/10.1093/nargab/lqab067](https://doi.org/10.1093/nargab/lqab067)
+* Pharokka - (https://github.com/gbouras13/pharokka) Bouras G, Nepal R, Houtak G, Psaltis AJ, Wormald P-J, Vreugde S. "Pharokka: a fast scalable bacteriophage annotation tool." Bioinformatics (2023) [https://doi.org/10.1093/bioinformatics/btac776](https://doi.org/10.1093/bioinformatics/btac776)
+* Foldseek - (https://github.com/steineggerlab/foldseek) [van Kempen M, Kim S, Tumescheit C, Mirdita M, Lee J, Gilchrist C, Söding J, and Steinegger M. "Fast and accurate protein structure search with Foldseek." Nature Biotechnology (2023) [doi:10.1038/s41587-023-01773-0](https://www.nature.com/articles/s41587-023-01773-0)
+* ProstT5 - (https://github.com/mheinzinger/ProstT5) Heinzinger M,  Weissenow K, Gomez Sanchez J, Henkel A, Steinegger M, Rost B. "ProstT5: Bilingual language model for protein sequence and structure." NAR Genomics and Bioinformatics (2024) [doi:10.1101/2023.07.23.550085](https://doi.org/10.1093/nargab/lqae150) 
+* Colabfold - (https://github.com/sokrypton/ColabFold) Mirdita M, Schütze K, Moriwaki Y, Heo L, Ovchinnikov S and Steinegger M. "ColabFold: Making protein folding accessible to all." Nature Methods (2022) [doi: 10.1038/s41592-022-01488-1 ](https://www.nature.com/articles/s41592-022-01488-1)
+* PHROGs - (https://phrogs.lmge.uca.fr) Terzian P, Olo Ndela E, Galiez C, Lossouarn J, Pérez Bucio RE, Mom R, Toussaint A, Petit MA, Enault F. "PHROG : families of prokaryotic virus proteins clustered using remote homology." NAR Genomics and Bioinformatics (2021) [https://doi.org/10.1093/nargab/lqab067](https://doi.org/10.1093/nargab/lqab067)
 
 Please also consider citing these supplementary databases where relevant:
 
-* [CARD](https://card.mcmaster.ca) - Alcock B.P. et al, CARD 2023: expanded curation, support for machine learning, and resistome prediction at the Comprehensive Antibiotic Resistance Database Nucleic Acids Research (2022) [https://doi.org/10.1093/nar/gkac920](https://doi.org/10.1093/nar/gkac920)
-* [VFDB](http://www.mgc.ac.cn/VFs/main.htm) - Chen L., Yang J., Yao Z., Sun L., Shen Y., Jin Q., "VFDB: a reference database for bacterial virulence factors", Nucleic Acids Research (2005) [https://doi.org/10.1093/nar/gki008](https://doi.org/10.1093/nar/gki008)
-* [Defensefinder](https://defensefinder.mdmlab.fr) - F. Tesson,  R. Planel, A. Egorov, H. Georjon,  H. Vaysset,  B. Brancotte,  B. Néron,  E. Mordret,  A Bernheim,  G. Atkinson,  J. Cury. A Comprehensive Resource for Exploring Antiphage Defense: DefenseFinder Webservice, Wiki and Databases. bioRxiv (2024) [https://doi.org/10.1101/2024.01.25.577194](https://doi.org/10.1101/2024.01.25.577194)
-* [acrDB](https://bcb.unl.edu/AcrDB/) - please cite the original acrDB database paper Le Huang, Bowen Yang, Haidong Yi, Amina Asif, Jiawei Wang, Trevor Lithgow, Han Zhang, Fayyaz ul Amir Afsar Minhas, Yanbin Yin, AcrDB: a database of anti-CRISPR operons in prokaryotes and viruses. Nucleic Acids Research (2021) [https://doi.org/10.1093/nar/gkaa857](https://doi.org/10.1093/nar/gkaa857) AND the paper that generated the structures for these protein used by `phold` [Harutyun Sahakyan, Kira S. Makarova, and Eugene V. Koonin. Search for Origins of Anti-CRISPR Proteins by Structure Comparison. The CRISPR Journal (2023)](https://doi.org/10.1089/crispr.2023.0011)
-* [Netflax](http://netflax.webflags.se) - Karin Ernits, Chayan Kumar Saha, Tetiana Brodiazhenko, Bhanu Chouhan, Aditi Shenoy, Jessica A. Buttress, Julián J. Duque-Pedraza, Veda Bojar, Jose A. Nakamoto, Tatsuaki Kurata, Artyom A. Egorov, Lena Shyrokova, Marcus J. O. Johansson, Toomas Mets, Aytan Rustamova, Jelisaveta Džigurski, Tanel Tenson, Abel Garcia-Pino, Henrik Strahl, Arne Elofsson, Vasili Hauryliuk, and Gemma C. Atkinson, The structural basis of hyperpromiscuity in a core combinatorial network of type II toxin–antitoxin and related phage defense systems. PNAS (2023) [https://doi.org/10.1073/pnas.2305393120](https://doi.org/10.1073/pnas.2305393120) 
-* [Netflax](http://netflax.webflags.se) - Karin Ernits, Chayan Kumar Saha, Tetiana Brodiazhenko, Bhanu Chouhan, Aditi Shenoy, Jessica A. Buttress, Julián J. Duque-Pedraza, Veda Bojar, Jose A. Nakamoto, Tatsuaki Kurata, Artyom A. Egorov, Lena Shyrokova, Marcus J. O. Johansson, Toomas Mets, Aytan Rustamova, Jelisaveta Džigurski, Tanel Tenson, Abel Garcia-Pino, Henrik Strahl, Arne Elofsson, Vasili Hauryliuk, and Gemma C. Atkinson, The structural basis of hyperpromiscuity in a core combinatorial network of type II toxin–antitoxin and related phage defense systems. PNAS (2023) [https://doi.org/10.1073/pnas.2305393120](https://doi.org/10.1073/pnas.2305393120) 
+* [CARD](https://card.mcmaster.ca) - Alcock BP, Huynh W, Chalil R, Smith KW, Raphenya AR, Wlodarski MA, Edalatmand A, Petkau A, Syed SA, Tsang KK, Baker SJC, Dave M, McCarthy MC, Mukiri KM, Nasir JA, Golbon B, Imtiaz H, Jiang X, Kaur K, Kwong M, Liang ZC, Niu KC, Shan P, Yang JYJ, Gray KL, Hoad GR, Jia B, Bhando T, Carfrae LA, Farha MA, French S, Gordzevich R, Rachwalski K, Tu MM, Bordeleau E, Dooley D, Griffiths E, Zubyk HL, Brown ED, Maguire F, Beiko RG, Hsiao WWL, Brinkman FSL, Van Domselaar G, McArthur AG. "CARD 2023: expanded curation, support for machine learning, and resistome prediction at the Comprehensive Antibiotic Resistance Database." Nucleic Acids Research (2022) [https://doi.org/10.1093/nar/gkac920](https://doi.org/10.1093/nar/gkac920)
+* [VFDB](http://www.mgc.ac.cn/VFs/main.htm) - Chen L, Yang J, Yao Z, Sun L, Shen Y, Jin Q. "VFDB: a reference database for bacterial virulence factors." Nucleic Acids Research (2005) [https://doi.org/10.1093/nar/gki008](https://doi.org/10.1093/nar/gki008)
+* [Defensefinder](https://defensefinder.mdmlab.fr) - Tesson F, Planel R,  Egorov A, Georjon H, Vaysset H, Brancotte B, Néron B, Mordret E, Bernheim A,  Atkinson G,  Cury J. "A Comprehensive Resource for Exploring Antiphage Defense: DefenseFinder Webservice, Wiki and Databases." Peer Community Journal (2024) [https://doi.org/10.24072/pcjournal.470](https://doi.org/10.24072/pcjournal.470)
+* [acrDB](https://bcb.unl.edu/AcrDB/) - please cite the original acrDB database paper Huang L, Yang B, Yi H, Asif A, Wang J, Lithgow T, Zhang H, Minhas FuAA, Yin Y. "AcrDB: a database of anti-CRISPR operons in prokaryotes and viruses." Nucleic Acids Research (2021) [https://doi.org/10.1093/nar/gkaa857](https://doi.org/10.1093/nar/gkaa857) AND the paper that generated the structures for these protein used by `foldfirst` Sahakyan H, Makarova KS,  Koonin EV. "Search for Origins of Anti-CRISPR Proteins by Structure Comparison." The CRISPR Journal (2023) [https://doi.org/10.1089/crispr.2023.0011](https://doi.org/10.1089/crispr.2023.0011)
+* [Netflax](http://netflax.webflags.se) - Ernits K, Saha CK, Brodiazhenko T, Chouhan B, Shenoy A, Buttress JA, Duque-Pedraza JJ, Bojar V, Nakamoto JA, Kurata T, Egorov AA, Shyrokova L, Johansson MJO, Mets T, Rustamova A, Džigurski J, Tenson T, Garcia-Pino A, Strahl H, Elofsson A, Hauryliuk V,  Atkinson GC. "The structural basis of hyperpromiscuity in a core combinatorial network of type II toxin–antitoxin and related phage defense systems." PNAS (2023) [https://doi.org/10.1073/pnas.2305393120](https://doi.org/10.1073/pnas.2305393120) 
+* [PDB](https://www.rcsb.org/) - Berman HM, Westbrook J, Feng Z, Gilliland G, Bhat TN, Weissig H, Shindyalov IN, Bourne PE. "The Protein Data Bank" Nucleic Acids Research (2000) [https://doi.org/10.1093/nar/28.1.235](https://doi.org/10.1093/nar/28.1.235)
+* [AlphaFold database](https://alphafold.com/) - Fleming J, Magana P, Nair S, Tsenkov M, Bertoni D, Pidruchna I, Afonso MQL, Midlik A, Paramval U, Žídek A, Laydon A, Kovalevskiy O, Pan J, Cheng J, Avsec Ž, Bycroft C, Wong LH, Last M, Mirdita M, Steinegger M, Kohli P, Váradi M, Velankar S. "AlphaFold Protein Structure Database and 3D-Beacons: New Data and Capabilities" Journal of Molecular Biology (2025) [https://doi.org/10.1016/j.jmb.2025.168967](https://doi.org/10.1016/j.jmb.2025.168967)
