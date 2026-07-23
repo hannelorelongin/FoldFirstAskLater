@@ -1,12 +1,59 @@
 import os
 import shutil
 import sys
+import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Iterator, List, Union
 from Bio import SeqIO
 import click
 from loguru import logger
+
+@contextmanager
+def atomic_write_path(target: Union[str, Path]) -> Iterator[Path]:
+    """Yield a sibling temp path that is renamed over ``target`` on success.
+
+    Usage::
+
+        with atomic_write_path(final_path) as tmp:
+            tmp.write_bytes(...)      # or SeqIO.write(..., tmp, "fasta"), etc.
+        # On normal exit, tmp has been atomically renamed onto final_path.
+        # On any exception (including KeyboardInterrupt), tmp is removed and
+        # final_path is left exactly as it was before the with-block.
+
+    The temp file is created in the **same directory** as ``target`` so the
+    final ``os.replace`` is guaranteed atomic on POSIX (same filesystem) and
+    on Windows (``os.replace`` overrides existing files atomically since
+    Py3.3). ``BaseException`` is caught so Ctrl-C also triggers cleanup.
+
+    Parameters
+    ----------
+    target
+        Final destination path. Its parent directory is created if missing.
+    """
+    target = Path(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+        dir=str(target.parent),
+    )
+    os.close(fd)  # callers re-open via the path
+    tmp_path = Path(tmp_name)
+    try:
+        yield tmp_path
+    except BaseException:
+        # Crash, Ctrl-C, SystemExit — drop the half-written temp and leave
+        # the original target untouched.
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+        raise
+    else:
+        # Atomic rename. os.replace overwrites the destination if present.
+        os.replace(tmp_path, target)
 
 
 class OrderedCommands(click.Group):
