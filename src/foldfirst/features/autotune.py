@@ -1,7 +1,10 @@
 
 # autobatch
 
-from foldfirst.features.predict_3Di import  get_T5_model
+from typing import Optional
+
+from pholdlib.prostt5.model import get_T5_model, device_synchronize
+from pholdlib.prostt5.device import parse_gpus
 from tqdm import tqdm
 import random
 import torch
@@ -52,30 +55,21 @@ def autotune_batching_real_data(
     probe_seqs,
     start_bs=1,
     max_bs=100,
-    step=5 # step size
+    step=5, # step size
+    device: Optional[str] = None,
 ):
-    
-    model, tokenizer = get_T5_model(model_dir, model_name, cpu, threads)
+
+    # `device` lets the multi-GPU caller pin autotune to a specific GPU
+    # (typically the lowest selected index). None preserves the original
+    # auto-detection behaviour.
+    model, tokenizer, device = get_T5_model(
+        model_dir, model_name, cpu, threads, device=device
+    )
     model.eval()
     model.half()
 
     bs = start_bs
     results = []
-
-    # get device
-    device = None
-
-    if cpu is True:
-        device = torch.device("cpu")
-    else:
-        # check for NVIDIA/cuda
-        if torch.cuda.is_available():
-            device = torch.device("cuda:0")
-        # check for apple silicon/metal
-        elif torch.backends.mps.is_available():
-            device = torch.device("mps")
-        else:
-            device = torch.device("cpu")
 
 
     while bs <= max_bs:
@@ -107,12 +101,12 @@ def autotune_batching_real_data(
                 inputs.pop("token_type_ids", None)
                 inputs = {k: v.to(device) for k, v in inputs.items()}
 
-                # timing
-                torch.cuda.synchronize()
+                # timing — device_synchronize handles CUDA/MPS/XPU/CPU (PR #129)
+                device_synchronize(device)
                 t0 = time.perf_counter()
                 with torch.no_grad():
                     _ = model(**inputs)
-                torch.cuda.synchronize()
+                device_synchronize(device)
 
                 total_time += time.perf_counter() - t0
                 
@@ -136,8 +130,11 @@ def autotune_batching_real_data(
 
             bs += step
 
-        except torch.cuda.OutOfMemoryError:
-            torch.cuda.empty_cache()
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+            # RuntimeError covers XPU OOM; torch.cuda.OutOfMemoryError covers CUDA.
+            # MPS raises RuntimeError on OOM. Clear caches where possible (PR #129).
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             break
 
     
@@ -158,16 +155,30 @@ def autotune_batching_real_data(
 
 
 
-def run_autotune(    
+def run_autotune(
     input_path,
     model_dir,
     model_name,
     cpu,
     threads,
-    step, 
+    step,
     min_batch,
-    max_batch, 
-    sample_seqs):
+    max_batch,
+    sample_seqs,
+    gpus: Optional[str] = None,
+):
+
+    # Resolve devices early so we can pick the autotune GPU (homogeneous-card
+    # assumption: same batch size applies to every GPU we'll later use).
+    devices = parse_gpus(cpu, gpus)
+    autotune_device: Optional[str] = None
+    if len(devices) >= 1 and devices != ["cpu"]:
+        autotune_device = devices[0]
+    if len(devices) > 1:
+        logger.info(
+            f"Multi-GPU detected ({len(devices)} devices); autotuning on "
+            f"{autotune_device} and applying the chosen batch to all devices."
+        )
 
     # Dictionary to store the records
     cds_dict = {}
@@ -221,7 +232,8 @@ def run_autotune(
         probe_seqs,
         start_bs=min_batch,
         max_bs=max_batch,
-        step=step # step size
+        step=step, # step size
+        device=autotune_device,
     )
 
     logger.info(f"Optimal batch size is {batch_size} (residues per batch {max_residues})")
