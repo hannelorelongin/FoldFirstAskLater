@@ -8,6 +8,7 @@ import json
 import requests
 import time
 import pandas as pd
+import polars as pl
 from loguru import logger
 from pathlib import Path
 
@@ -30,7 +31,7 @@ def get_foldfirst_hits(
     proteins_flag: bool,
     uniprot: bool,
     offline: bool,
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """
     Process Foldseek output to extract top hits for custom searches
 
@@ -44,7 +45,7 @@ def get_foldfirst_hits(
         offline (bool): Flag indicating whether the script is running in offline mode, not fetching any information through APIs.
 
     Returns:
-        pd.DataFrame: DataFrame containing the top hits extracted from the custom Foldseek output.
+        pl.DataFrame: DataFrame containing the top hits extracted from the custom Foldseek output.
     """
 
     logger.info(f"Processing Fold First Ask Later Foldseek output ({database_name} database).")
@@ -191,6 +192,8 @@ def get_foldfirst_hits(
                 uniprot_id_to_name_pdb["no UniProt entry associated"] = "WARNING No UniProt entry associated with this PDB entry, no information fetched."
                 # now add in the fetched information to the df (taking into account there can be multiples)
                 foldseek_df["uniprot_names"] = foldseek_df["uniprot_ids"].apply(lambda ids: [f"{uniprot_id_to_name_pdb.get(uniprot_id)} (UniProt ID: {uniprot_id})" for uniprot_id in ids])
+
+    foldseek_df = pl.from_pandas(foldseek_df)
 
     return foldseek_df
 

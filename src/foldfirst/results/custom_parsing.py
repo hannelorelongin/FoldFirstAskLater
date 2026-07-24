@@ -5,7 +5,7 @@
 
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 from loguru import logger
 
 
@@ -13,9 +13,12 @@ def get_topcustom_hits(
     result_tsv: Path,
     structures: bool,
     proteins_flag: bool,
-) -> pd.DataFrame:
-    """
-    Process Foldseek output to extract top hits for custom searches
+) -> pl.DataFrame:
+    """Process Foldseek output to extract top custom-DB hits.
+    The original
+    ``foldseek_df.loc[foldseek_df.groupby("query")["evalue"].idxmin()]``
+    pattern is replaced by ``sort.group_by.first()`` with a stable
+    secondary sort on row order to reproduce pandas' idxmin tie-break.
 
     Args:
         result_tsv (Path): Path to the Foldseek custom result TSV file.
@@ -23,66 +26,81 @@ def get_topcustom_hits(
         proteins_flag (bool): Flag indicating whether proteins are used.
 
     Returns:
-        pd.DataFrame: DataFrame containing the top hits extracted from the custom Foldseek output.
+        pl.DataFrame: DataFrame containing the top hits extracted from the custom Foldseek output.
     """
 
     logger.info("Processing custom database Foldseek output")
 
-    col_list = [
-        "query",
-        "target",
-        "bitscore",
-        "fident",
-        "evalue",
-        "qStart",
-        "qEnd",
-        "qLen",
-        "tStart",
-        "tEnd",
-        "tLen",
+    base_cols = [
+        "query", "target", "bitscore", "fident", "evalue",
+        "qStart", "qEnd", "qLen", "tStart", "tEnd", "tLen",
     ]
 
     # tmscore and lddt computed
-    if structures:
-        col_list += ["alntmscore", "lddt"]
+    col_list = base_cols + (["alntmscore", "lddt"] if structures else [])
 
-    foldseek_df = pd.read_csv(
-        result_tsv, delimiter="\t", index_col=False, names=col_list
+    foldseek_df = pl.read_csv(
+        result_tsv,
+        separator = "\t",
+        has_header = False,
+        new_columns = col_list,
+        schema_overrides = {"evalue": pl.Utf8},
+        infer_schema_length = 10_000,
     )
 
     # in case the foldseek output is empty
-    if foldseek_df.empty:
+    if foldseek_df.is_empty():
         logger.warning(
             "Foldseek found no custom hits whatsoever - please check your custom database and input."
         )
         logger.warning("Fold First Ask Later will continue using only the default databases.")
 
     # issue #86 - convert all ~PIPE~ back to |
-    foldseek_df["query"] = foldseek_df["query"].str.replace("~PIPE~", "|", regex=False)
+    foldseek_df = foldseek_df.with_columns(
+        pl.col("query").str.replace_all("~PIPE~", "|", literal = True)
+    )
 
-    # gets the cds
-    if structures is False and proteins_flag is False:
-        # prostt5
-        foldseek_df[["contig_id", "cds_id"]] = foldseek_df["query"].str.split(
-            ":", expand=True, n=1
-        )
-        # dont need it
-        foldseek_df.drop(columns=["contig_id"], inplace=True)
-    # structures or proteins_flag or both
+    # Derive cds_id from query.
+    if not structures and not proteins_flag:
+        # prostt5 path: query = "<contig_id>:<cds_id>"
+        # NOTE — the original code splits into contig_id+cds_id then
+        # IMMEDIATELY drops contig_id. So we just produce cds_id directly.
+        foldseek_df = foldseek_df.with_columns(
+            pl.col("query")
+            .str.splitn(":", 2)
+            .struct.rename_fields(["_contig_id", "cds_id"])
+            .alias("_q")
+        ).unnest("_q").drop("_contig_id")
     else:
-        foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".pdb", "")
-        foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".cif", "")
+        # structures / proteins_flag: query is the cds_id (possibly with
+        # ``.pdb``/``.cif`` suffix). Preserve the original pandas bug
+        # where the second assignment overwrites the first — only
+        # ``.cif`` actually gets stripped from the original query.
+        foldseek_df = foldseek_df.with_columns(
+            pl.col("query").str.replace_all(".cif", "", literal = True).alias("cds_id")
+        )
 
-    # clean up pdb/cif suffixes - target will be the hit
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".pdb", "")
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".cif", "")
-    # split the target column as this will have phrog:protein
+    # Clean up ``.pdb`` and ``.cif`` suffixes from target.
+    foldseek_df = foldseek_df.with_columns(
+        pl.col("target")
+        .str.replace_all(".pdb", "", literal = True)
+        .str.replace_all(".cif", "", literal = True)
+    )
 
-    tophit_custom_df = foldseek_df.loc[
-        foldseek_df.groupby("query")["evalue"].idxmin()
-    ].reset_index(drop=True)
+    # Pick the lowest-evalue row per query. Add _orig_idx so ties break
+    # on input order, matching pandas' idxmin (stable).
+    tophit_custom = (
+        foldseek_df
+        .with_row_index("_orig_idx")
+        .with_columns(pl.col("evalue").cast(pl.Float64).alias("_evalue_f"))
+        .sort(["_evalue_f", "_orig_idx"])
+        .group_by("query", maintain_order = False)
+        .first()
+        .drop(["_evalue_f", "_orig_idx"])
+        .sort("query")  # match pandas groupby(sort = True) output order
+    )
 
-    # dont need query or contig_id any more
-    tophit_custom_df.drop(columns=["query"], inplace=True)
+    # Drop the query column (downstream uses cds_id instead).
+    tophit_custom = tophit_custom.drop("query")
 
-    return tophit_custom_df
+    return tophit_custom
