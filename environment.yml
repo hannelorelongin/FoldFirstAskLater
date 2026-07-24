@@ -23,6 +23,7 @@ dependencies:
   - pycirclize >=0.3.1
   - h5py >=3.5
   - pholdlib >=0.1.2
+  - polars >=1.0
 
 
 
