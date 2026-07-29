@@ -205,50 +205,71 @@ def get_UniProtID_from_target(target):
 
 # fetch information from UniProt for a list of UniProt identifiers
 def fetch_UniProt_info(uniprot_ids):
+    # count the total number of UniProt identifiers to process
+    total_ids = len(uniprot_ids)
     # dict to store mapping of UniProt ID to protein name
     uniprot_id_to_name = {}
+    # set batch size for API calls (to avoid too many requests at once)
+    batch_size = 100
     # add in a progress logger
-    total_ids = len(uniprot_ids)
     logger.info(f"Fetching protein names for {total_ids} unique UniProt identifiers.")
     start_time = time.time()
-    last_logged_percent = 0
-    # loop over entries and fetch
-    for i, uniprot_id in enumerate(uniprot_ids):
+    processed = 0
+    # only log every 2 minutes
+    log_interval_seconds = 120
+    last_log_time = start_time
+    # loop over entries per batch of batch_size (100) and fetch
+    for start in range(0, total_ids, batch_size):
+        # extract a batch of UniProt IDs
+        batch_ids = uniprot_ids[start:(start+batch_size)]
+        # fetch protein names for batch
         try:
-            protein_name = get_protein_name_string(uniprot_id)
-            uniprot_id_to_name[uniprot_id] = protein_name
+            batch_ids_to_names = get_protein_names_string(batch_ids)
         except Exception as e:
             logger.error(f"Failed to fetch protein name from UniProt due to the following error: {e}.")
             logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-        # update logger every 10% of progress
-        current_percent = int(((i + 1) / total_ids) * 100)
-        if current_percent >= last_logged_percent + 10:
-            elapsed = time.time() - start_time
-            remaining = total_ids - (i + 1)
-            if i + 1 > 0:  # Avoid division by zero
-                rate = (i + 1) / elapsed
-                eta_seconds = remaining / rate
-                eta_str = f"{int(eta_seconds // 60)}m {int(eta_seconds % 60)}s" if eta_seconds < 3600 else f"{int(eta_seconds // 3600)}h {int((eta_seconds % 3600) // 60)}m"
-            else:
-                eta_str = "unknown"
-            logger.info(f"UniProt fetching progress: {current_percent}% complete ({i + 1} of {total_ids} IDs - ETA: {eta_str}).")
-            last_logged_percent = current_percent
+        # add to the overall dictionary 
+        for uniprot_id in batch_ids:
+            uniprot_id_to_name[uniprot_id] = batch_ids_to_names.get(uniprot_id)
+        # update the logging progress - onlyif there are a lot of IDs to process
+        processed += len(batch_ids)
+        if total_ids > batch_size * 100:
+            current_time = time.time()
+            if current_time - last_log_time >= log_interval_seconds:
+                elapsed = current_time - start_time
+                remaining = total_ids - processed
+                rate = processed / elapsed if elapsed > 0 else 0
+                eta_seconds = remaining / rate if rate > 0 else 0
+
+                if eta_seconds < 3600:
+                    eta_str = f"{int(eta_seconds // 60)}m {int(eta_seconds % 60)}s"
+                else:
+                    eta_str = f"{int(eta_seconds // 3600)}h {int((eta_seconds % 3600) // 60)}m"
+
+                percent_done = (processed / total_ids * 100) if total_ids else 100
+                logger.info(f"UniProt fetching progress: {processed} of {total_ids} IDs processed ({percent_done:.1f}%) - ETA: {eta_str}.")
+                last_log_time = current_time
+            
     logger.info(f"Completed fetching protein names from UniProt.")
     return uniprot_id_to_name
 
-# get protein name, for a single UniProt ID
-def get_protein_name_string(uniprot_id):
-    # note: unsure if protein_name is a required field, if we get errors, look into this!
-    url = f"https://rest.uniprot.org/uniprotkb/search?query={uniprot_id}&fields=protein_name&format=tsv"
+def get_protein_names_string(uniprot_ids):
+    # create query string for multiple UniProt IDs
+    query = " OR ".join(f"accession:{uniprot_id}" for uniprot_id in uniprot_ids)
+    url = f"https://rest.uniprot.org/uniprotkb/search?query={query}&fields=accession,protein_name&format=tsv"
     r = sess.get(url)
     r.raise_for_status()
-    content = r.text
-    names = content.split("\n")[1:-1]
-    # if the UniProt entry was marked as obsolete, access its UniParc accession
-    if "deleted" in names:
-        return "WARNING UniProt entry is obsolete, no information fetched."
-    else:
-        return ";".join([str(name) for name in names])
+    lines = r.text.splitlines()
+    ids_to_names = {}
+    for line in lines[1:]:  # Skip the header line
+        accession, names = line.split("\t")
+            # if the UniProt entry was marked as obsolete, access its UniParc accession
+        if "deleted" in names:
+            ids_to_names[accession] = "WARNING UniProt entry is obsolete, no information fetched."
+        else:
+            ids_to_names[accession] = names
+    return ids_to_names 
+
 
 ################################
 # PDB fetching functions
