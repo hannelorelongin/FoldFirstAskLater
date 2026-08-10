@@ -1,0 +1,128 @@
+# =============================================================================
+# phageFACTor — single source of truth for paths + thresholds
+# =============================================================================
+# Path resolution order (see scripts/lib/config.py):
+#   1. ${PHAGEFACTOR_ROOT} environment variable, if set
+#   2. the directory two levels above this file (repo root)  ← portable default
+# All sub-paths below are RELATIVE to that root, so the repo runs anywhere
+# (laptop, cluster, CI) with no edits. Override any absolute path per-machine
+# by exporting PHAGEFACTOR_ROOT or editing the `databases:` block.
+# =============================================================================
+
+project:
+  name: phagefactor
+  host_genus: ""                   # NO default. Set per dataset here or via
+                                   # PHAGEFACTOR_HOST_GENUS. Blank => fs_same_host = NA
+                                   # and the host-derived-moron gate does not fire.
+  # provenance tag written into GenBank /note
+  note_tag: phagefactor
+
+# --- Layout -----------------------------------------------------------------
+paths:
+  # INPUT — the user's data (contains fasta/ + prophage_list.txt). May be an
+  # ABSOLUTE path, or override with the PHAGEFACTOR_INPUT env var. fasta/ and
+  # prophage_list.txt are always resolved *inside* input_dir.
+  input_dir:      input
+
+  # RUN — ALL outputs + logs go under a versioned run dir. The first run is
+  # <run_base>/<run_name>; if that already exists the pipeline makes <run_name>_002,
+  # _003, ... so a run NEVER overwrites a previous one. run_base may be ABSOLUTE,
+  # or override with PHAGEFACTOR_RUN_BASE. submit_all.sh resolves the exact dir once
+  # and exports it as PHAGEFACTOR_RUN_DIR so every step writes to the same place.
+  run_base:       runs
+  run_name:       run
+
+  # Everything below is RELATIVE to the resolved run dir (generated outputs).
+  split_dir:      split
+  pharokka_out:   00c_pharokka
+  phold_out:      01_phold
+  foldseek_out:   02_foldseek
+  comparison_out: 03_comparison
+  # 04_curate_annotations.py (curate) + 05_build_output.py (build output) run
+  # back-to-back in ONE SLURM job (steps/04_curate.sh) and share ONE deliverable
+  # folder (04_output); curated_annotations.csv + review_suggested.csv live in the
+  # 04_output/curation/ subfolder. 06_phynteny.py + 07_integrate.py similarly
+  # share ONE folder (05_phynteny) inside the optional steps/05_phynteny.sh job;
+  # phynteny's verbose log + input FASTA go in 05_phynteny/run/.
+  output_out:     04_output
+  curation_out:   04_output/curation
+  phynteny_out:   05_phynteny
+  phynteny_run:   05_phynteny/run
+  # Step 07 = integrate (merge phynteny categories + synteny C1/Cro hints into the
+  # final table + GBK). Writes into 05_phynteny (final_annotations_integrated.csv).
+  # goPhage (ortholog-group propagation) is DEFERRED — needs a much larger input
+  # dataset to build ortholog groups; not part of v1.
+  gophage_out:    05_phynteny
+  logs_dir:       logs
+
+# --- Tool databases (the ONLY block that is machine-specific) ----------------
+# Point each at the FoldSeek DB *root* (NOT the *_ca file). Leave a value blank
+# to skip that DB. On an HPC cluster these typically live under shared project
+# storage; set the FOLDSEEK_DB_ROOT env var or edit here.
+databases:
+  pharokka_db: ""                  # set to your pharokka_db path
+  foldseek_db_root: ""             # e.g. /data/databases/foldseek_dbs (or set $FOLDSEEK_DB_ROOT)
+  # afdb50 = AlphaFold DB UniProt50-minimal (the full per-entry AFDB50 set).
+  # Note: AFDBClusters was tried and DROPPED — its structural clustering was not
+  # granular enough and lost many relevant (host-derived moron) hits vs afdb50.
+  foldseek_local_dbs:
+    afdb-swissprot: afdb_swissprot_db/afdb_swissprot
+    pdb100:         pdb100_db/pdb100
+    afdb50:         afdb50_db/afdb50
+  # Per-DB NCBI-taxon keep-filter (empty = keep all). 2=Bacteria 2157=Archaea 10239=Viruses
+  foldseek_taxon_filter:
+    afdb50: "2,2157,10239"
+    afdb-swissprot: ""
+    pdb100: ""
+
+# --- SLURM / compute ----------------------------------------------------------
+slurm:
+  email: ""                        # set your notification email, or leave blank
+  mail_type: "BEGIN,END,FAIL"
+  partition: common
+  qos: fast
+  tmpdir: /local/scratch/tmp
+  # CPU-only by default. GPU detection (PyTorch/CUDA) can be unreliable across
+  # cluster environments and phold runs fine on CPU for typical prophage-scale
+  # datasets. Flip to 1 + set the gpu_* fields only if you have a working CUDA env.
+  phold_use_gpu: 0
+  phold_proteins_use_gpu: 0
+  gpu_partition: gpu
+  gpu_qos: gpu
+  gpu_gres: "gpu:1"
+  protein_batch_size: 50           # fixed; last batch may be partial
+
+# --- Step 02: custom FoldSeek thresholds ------------------------------------
+foldseek:
+  threads: 16
+  evalue_max: 0.1                  # Gate 1 quality filter
+  score_override: 200             # rescue: keep hit if score >= this even if evalue >= max
+  prostt5_mask_threshold: 25       # per-residue 3Di masking (0 = off)
+  confident_evalue: 1.0e-3
+  good_evalue: 0.01
+  borderline_score: 100
+  # Host-aware ranking boost for hits whose taxname matches project.host_genus.
+  # Ranking ONLY (never changes the confidence tier). Set 1.0 to disable.
+  # WARNING: usefulness is host-dependent — a host that is heavily represented in
+  # the structure DBs gains the most but also carries the most composition bias.
+  # Needs taxonomy in the hit table + a host_genus set, else it does nothing.
+  host_boost: 1.20
+  api_url: https://search.foldseek.com/api   # webAPI search mode
+
+# --- Step 03: comparison thresholds -----------------------------------------
+compare:
+  fuzzy_strong_threshold: 0.35     # Jaccard
+  fuzzy_partial_threshold: 0.08
+  phold_trusted_conf: [high, medium]
+  phold_weak_conf: [low]
+
+# --- Step 06: phynteny ------------------------------------------------------
+phynteny:
+  threshold: 0.8
+
+# --- Optional pre-CDS-computed sub-mode (e.g. citro/eggNOG inputs) -----------
+# Build a base GBK from absolute host-genome coords when there is no Pharokka GBK.
+precomputed:
+  source_genome_fasta:  input/genome/source_genome.fasta
+  prophage_windows_csv: input/fasta/prophage_windows.csv   # prophage,genome_start,genome_stop
+  rich_gene_metadata_csv: input/gene_metadata_rich.csv
