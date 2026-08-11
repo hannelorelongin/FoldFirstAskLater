@@ -110,6 +110,63 @@ def get_foldfirst_hits(
     # filling any possible NaNs
     foldseek_df["function"] = foldseek_df["function"].fillna("unknown function")
 
+    # --- hit-cap: order then keep top N per CDS ----------------------------------------------------------
+    # Writing every hit is expensive and only the best + top-3 per CDS are used.
+    # BUT the ranking used to cap decides which hits survive, and that is not
+    # neutral: capping on RAW BITSCORE deletes hits a composite (bitscore x
+    # phage-context boost) ranking would have promoted. Bitscore-ranked
+    # consumers never notice; composite-ranked ones silently lose winners.
+    #   FFAL_CAP_ORDER=bitscore   (default) top-N by raw bitscore
+    #   FFAL_CAP_ORDER=composite            top-N by phageFACTor ordering
+    #                                       (needs PHAGEFACTOR_ROOT)
+    #   FFAL_MAX_HITS_PER_CDS=0             disable the cap entirely
+    # Run FFAL twice into different output trees to get both hit sets.
+    import os as _os
+    _cap = int(_os.environ.get("FFAL_MAX_HITS_PER_CDS", "50"))
+    _order = _os.environ.get("FFAL_CAP_ORDER", "bitscore").strip().lower()
+    if _cap > 0 and not foldseek_df.empty and "cds_id" in foldseek_df.columns:
+        _before = len(foldseek_df)
+        _rank = "bitscore"
+        if _order == "composite":
+            try:
+                import sys as _sys
+                _pf = _os.environ.get("PHAGEFACTOR_ROOT", "")
+                if _pf and _pf + "/scripts" not in _sys.path:
+                    _sys.path.insert(0, _pf + "/scripts")
+                from foldseek_scoring import (_phage_boost_factor as _boost,
+                                               _host_boost_factor as _hboost,
+                                               _is_same_host_hit as _samehost)
+                _score = foldseek_df["bitscore"] * foldseek_df["function"].map(
+                    lambda d: _boost(str(d)))
+                # host boost (x1.20 by default) needs taxonomy on the hit rows;
+                # inert when PHAGEFACTOR_HOST_GENUS is unset or taxname absent,
+                # so this is safe to always attempt.
+                _tax = next((c for c in ("taxname", "taxonomy", "taxlineage")
+                             if c in foldseek_df.columns), None)
+                if _tax:
+                    _score = _score * [
+                        _hboost(str(d), _samehost(str(t)))
+                        for d, t in zip(foldseek_df["function"], foldseek_df[_tax])]
+                else:
+                    logger.info("composite cap: no taxonomy column, host boost "
+                                "inert (phage boost only).")
+                foldseek_df["composite_score"] = _score
+                _rank = "composite_score"
+            except Exception as _e:
+                logger.warning(
+                    f"FFAL_CAP_ORDER=composite but phageFACTor scoring could not "
+                    f"be imported ({_e}). Set PHAGEFACTOR_ROOT. FALLING BACK to "
+                    f"bitscore -- this run is NOT a composite-ordered run.")
+        foldseek_df = (foldseek_df
+                       .sort_values(_rank, ascending=False)
+                       .groupby("cds_id", sort=False)
+                       .head(_cap)
+                       .reset_index(drop=True))
+        logger.info(
+            f"Capped hits at {_cap}/CDS ordered by {_rank}: {_before} -> "
+            f"{len(foldseek_df)} rows ({database_name})."
+        )
+
     # clean up pdb/cif suffixes in the target column
     foldseek_df["target"] = foldseek_df["target"].str.replace(".pdb", "")
     foldseek_df["target"] = foldseek_df["target"].str.replace(".cif", "")
