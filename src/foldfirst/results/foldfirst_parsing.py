@@ -66,6 +66,8 @@ def get_foldfirst_hits(
     # tmscore and lddt computed
     if structures:
         col_list += ["alntmscore", "lddt"]
+    # taxonomy patch: convertalis now emits taxid,taxname for pdb/af50m
+    col_list += ["taxid", "taxname"]
 
     foldseek_df = pd.read_csv(
         result_tsv, delimiter="\t", index_col=False, names=col_list
