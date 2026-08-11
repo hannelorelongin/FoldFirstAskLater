@@ -12,7 +12,10 @@ from foldfirst.utils.util import remove_directory
 
 # rename databases for better readability in code 
 # AlphaFold database rename is required to circumvent path issues
-foldfirst_databases = {"PDB": "pdb", "Alphafold/UniProt50-minimal": "af50m"}
+# swissprot patch: Swiss-Prot = manually reviewed UniProt (~570k), small but
+# its descriptions are curated protein NAMES (high signal for annotation).
+foldfirst_databases = {"PDB": "pdb", "Alphafold/UniProt50-minimal": "af50m",
+                       "Alphafold/Swiss-Prot": "afdb_swissprot"}
 
 foldfirst_db_names = {"PDB": ["pdb", "pdb.dbtype", "pdb.index",
                          "pdb_ca", "pdb_ca.dbtype", "pdb_ca.index",
@@ -27,10 +30,18 @@ foldfirst_db_names = {"PDB": ["pdb", "pdb.dbtype", "pdb.index",
                      "af50m_h", "af50m_h.dbtype", "af50m_h.index",
                      "af50m_ss", "af50m_ss.dbtype", "af50m_ss.index",
                      "af50m.lookup", "af50m.version",
-                     "af50m_mapping", "af50m_taxonomy"]
+                     "af50m_mapping", "af50m_taxonomy"],
+                "Alphafold/Swiss-Prot":
+                    ["afdb_swissprot", "afdb_swissprot.dbtype", "afdb_swissprot.index",
+                     "afdb_swissprot_h", "afdb_swissprot_h.dbtype", "afdb_swissprot_h.index",
+                     "afdb_swissprot_ss", "afdb_swissprot_ss.dbtype", "afdb_swissprot_ss.index",
+                     "afdb_swissprot.lookup", "afdb_swissprot.version",
+                     "afdb_swissprot_mapping", "afdb_swissprot_taxonomy"]
                 }
 
-foldfirst_gpu_db_names = {"PDB": ["pdb_gpu"], "Alphafold/UniProt50-minimal": ["af50m_gpu"]}
+foldfirst_gpu_db_names = {"PDB": ["pdb_gpu"],
+                          "Alphafold/UniProt50-minimal": ["af50m_gpu"],
+                          "Alphafold/Swiss-Prot": ["afdb_swissprot_gpu"]}
 
 def install_database(db_dir: Path, foldseek_gpu: bool, threads: int) -> None:
     """
