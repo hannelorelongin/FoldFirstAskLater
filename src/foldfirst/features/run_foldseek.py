@@ -132,6 +132,7 @@ def create_result_tsv(
     foldseek_gpu: bool,
     structures: bool,
     threads: int,
+    include_taxonomy: bool = False,  # taxonomy patch
 ) -> None:
     """
     Create a TSV file containing the results of a Foldseek search.
@@ -153,6 +154,8 @@ def create_result_tsv(
         format_string = "--format-output query,target,bits,fident,evalue,qstart,qend,qlen,tstart,tend,tlen,alntmscore,lddt"
     else:
         format_string = "--format-output query,target,bits,fident,evalue,qstart,qend,qlen,tstart,tend,tlen"
+    if include_taxonomy:  # taxonomy patch: pdb/af50m ship *_taxonomy
+        format_string += ",taxid,taxname"
     if foldseek_gpu:
         target_db = f"{target_db}_gpu"
 
