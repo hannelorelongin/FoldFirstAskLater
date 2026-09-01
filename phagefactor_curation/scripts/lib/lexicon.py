@@ -102,7 +102,9 @@ UNCHAR_PATTERN = re.compile(
     | ^(?:(?:two|three|four|five|six)[\s-]?)?helix[\s-]?bundle(?:\s+protein)?$
     | ^beta[\s-]?barrel(?:\s+protein)?$
     # 'phage protein' and its Bacteriophage-/Prophage- variants name nothing.
-    | ^(?:bacterio)?(?:pro)?phage\ protein(?:\s*\((?:fragment|unknown\ function)\))?$
+    | ^(?:putative\ |probable\ |conserved\ |predicted\ |hypothetical\ )*(?:bacterio)?(?:pro)?phage[\s-]?(?:associated|related|derived|encoded|specific)?[\s-]?protein(?:\s*\((?:fragment|unknown\ function)\))?$
+    | ^Prophage\ \S+\ protein\ \d+$          # 'Prophage pi3 protein 52'
+    | ^[A-Za-z]{2,4}\d{3,5}\ protein$        # locus tag + protein: 'Lin2420 protein'
     # Accession-shaped names. NARROW: 'SNF2-related', 'VgrG-related' and
     # 'tape measure-related' must survive; only a tag-shaped stem is rejected.
     | ^(?:[A-Za-z]{2,6}\d{2,5}|\d+)-related\s+protein$
