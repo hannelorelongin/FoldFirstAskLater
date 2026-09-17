@@ -67,6 +67,7 @@ from utils import (
     log, section, clean_str, is_informative, fuzzy_score,
     load_phold_tsv,
 )
+from lexicon import is_informative_desc
 
 try:
     import pandas as pd
@@ -601,7 +602,7 @@ def main():
                 (fs_evalue is None or fs_evalue < FOLDSEEK_EVALUE_MAX)
                 or (fs_score is not None and fs_score >= FOLDSEEK_SCORE_OVERRIDE)
             )
-            fs_inf = bool(fs_inf_flag) and is_informative(fs_desc) and fs_quality_ok
+            fs_inf = bool(fs_inf_flag) and is_informative(fs_desc) and is_informative_desc(fs_desc) and fs_quality_ok
             # WEAK/NO_HIT structural hits are unreliable: force uninformative so
             # the downstream agreement is not driven by poor-quality FS evidence.
             if fs_confidence in ("WEAK", "NO_HIT"):
