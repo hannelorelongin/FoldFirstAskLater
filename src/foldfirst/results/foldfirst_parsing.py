@@ -65,7 +65,7 @@ def get_foldfirst_hits(
 
     # tmscore and lddt computed
     if structures:
-        col_list += ["alntmscore", "lddt"]
+        col_list += ["prob", "alntmscore", "lddt"]
 
     foldseek_df = pd.read_csv(
         result_tsv, delimiter="\t", index_col=False, names=col_list

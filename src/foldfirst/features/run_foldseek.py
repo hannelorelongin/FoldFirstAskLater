@@ -150,7 +150,7 @@ def create_result_tsv(
         None
     """
     if structures:
-        format_string = "--format-output query,target,bits,fident,evalue,qstart,qend,qlen,tstart,tend,tlen,alntmscore,lddt"
+        format_string = "--format-output query,target,bits,fident,evalue,qstart,qend,qlen,tstart,tend,tlen,prob,alntmscore,lddt"
     else:
         format_string = "--format-output query,target,bits,fident,evalue,qstart,qend,qlen,tstart,tend,tlen"
     if foldseek_gpu:

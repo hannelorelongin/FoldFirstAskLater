@@ -52,6 +52,7 @@ def get_topfunctions(
             "tStart",
             "tEnd",
             "tLen",
+            "prob",
             "alntmscore",
             "lddt",
         ]
