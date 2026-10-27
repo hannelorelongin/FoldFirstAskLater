@@ -368,7 +368,7 @@ def subcommand_compare(
                 clustered_db=False,  # no custom db cluster searching
             )
 
-            create_result_tsv(query_db, target_db, result_db_foldfirst, result_tsv_foldfirst, logdir, foldseek_gpu, structures, threads)
+            create_result_tsv(query_db, target_db, result_db_foldfirst, result_tsv_foldfirst, logdir, foldseek_gpu, structures, threads, include_taxonomy=True)  # taxonomy patch
 
 
 

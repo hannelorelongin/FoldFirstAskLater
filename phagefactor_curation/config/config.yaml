@@ -1,0 +1,139 @@
+# =============================================================================
+# phageFACTor — paths + thresholds of a project
+# =============================================================================
+# `phagefactor init <dir>` copies this file to <dir>/config/config.yaml; the
+# copy in the code folder is only the default. Relative paths below resolve
+# against the project dir (the folder holding config/). See docs/configure.md.
+# =============================================================================
+
+project:
+  name: phagefactor
+  host_genus: ""                   # NO default. Set per dataset here or via
+                                   # PHAGEFACTOR_HOST_GENUS. Blank => fs_same_host = NA
+                                   # and the host-derived-moron gate does not fire.
+  # provenance tag written into GenBank /note
+  note_tag: phagefactor
+
+# --- Layout -----------------------------------------------------------------
+paths:
+  # INPUT — the user's data (contains fasta/ + prophage_list.txt). May be an
+  # ABSOLUTE path, or override with the PHAGEFACTOR_INPUT env var. fasta/ and
+  # prophage_list.txt are always resolved *inside* input_dir.
+  input_dir:      input
+
+  # RUN — ALL outputs + logs of this analysis (absolute, or relative to the
+  # project dir; override with PHAGEFACTOR_RUN_DIR or --config run_dir=...).
+  # Re-running into the same run dir only redoes what changed.
+  run_dir:        runs/run
+
+  # Everything below is RELATIVE to the resolved run dir (generated outputs).
+  split_dir:      split
+  pharokka_out:   00c_pharokka
+  phold_out:      01_phold
+  foldseek_out:   02_foldseek
+  comparison_out: 03_comparison
+  # 04_curate_annotations.py + 05_build_output.py (rule curate) share ONE
+  # deliverable folder (04_output); curated_annotations.csv + review_suggested.csv
+  # live in 04_output/curation/. 06_phynteny.py + 07_integrate.py (rule phynteny)
+  # share 05_phynteny; phynteny's verbose log + input FASTA go in 05_phynteny/run/.
+  output_out:     04_output
+  curation_out:   04_output/curation
+  phynteny_out:   05_phynteny
+  phynteny_run:   05_phynteny/run
+  # Step 07 = integrate (merge phynteny categories + synteny C1/Cro hints into the
+  # final table + GBK). Writes into 05_phynteny (final_annotations_integrated.csv).
+  logs_dir:       logs
+
+# --- Tool databases (the ONLY block that is machine-specific) ----------------
+# db_root holds pharokka_db/ and foldseek_dbs/. Blank = the location recorded by
+# `phagefactor databases <dir>` (~/.config/phagefactor/settings.yaml), else
+# <project>/databases. pharokka_db / phold_db / foldseek_db_root override one
+# part of it. Env vars win: PHAGEFACTOR_DB_ROOT, PHAROKKA_DB, PHOLD_DB, FOLDSEEK_DB_ROOT.
+# phold_db: when the folder does not exist, phold uses its own default location.
+databases:
+  db_root: ""
+  pharokka_db: ""
+  phold_db: ""
+  foldseek_db_root: ""
+  taxdump: ""           # NCBI taxdump dir; default <db_root>/taxdump (phagefactor databases --taxdump)
+  # afdb50 = AlphaFold DB UniProt50-minimal (the full per-entry AFDB50 set),
+  # rather than AFDB clusters, whose representatives lose host-derived moron hits.
+  foldseek_local_dbs:
+    afdb-swissprot: afdb_swissprot_db/afdb_swissprot
+    pdb100:         pdb100_db/pdb100
+    afdb50:         afdb50_db/afdb50
+  # Per-DB NCBI-taxon keep-filter (empty = keep all). 2=Bacteria 2157=Archaea 10239=Viruses
+  foldseek_taxon_filter:
+    afdb50: "2,2157,10239"
+    afdb-swissprot: ""
+    pdb100: ""
+
+# --- Step 02: custom FoldSeek thresholds ------------------------------------
+foldseek:
+  threads: 16
+  evalue_max: 0.1                  # Gate 1 quality filter
+  score_override: 200             # rescue: keep hit if score >= this even if evalue >= max
+  prostt5_mask_threshold: 25       # per-residue 3Di masking (0 = off)
+  # Candidates FoldSeek keeps per query (its own default). Lower values can drop
+  # the best hits of large protein families, and which ones are dropped then
+  # depends on the CPU type of the node. Only the ranked best/top-3 are used.
+  max_seqs: 1000
+  # Structural-confidence tiers (evalue = e, score = s), evaluated top-down.
+  # CONFIDENT: (e <= confident_evalue AND s >= confident_score)
+  #            OR (top-3 agree AND (e <= confident_evalue OR s >= confident_top3_score))
+  # GOOD:      (e <= good_evalue OR s >= good_score)
+  #            OR (top-3 agree AND e <= good_top3_evalue)
+  # BORDERLINE:(e <= borderline_evalue) OR (s >= borderline_score AND e <= borderline_scoreonly_evalue)
+  #            OR (top-3 agree AND (e <= borderline_evalue OR s >= borderline_score))
+  confident_evalue:            1.0e-3
+  confident_score:             200
+  confident_top3_score:        300
+  good_evalue:                 0.01
+  good_score:                  200
+  good_top3_evalue:            0.05
+  borderline_evalue:           0.1
+  borderline_score:            90
+  borderline_scoreonly_evalue: 0.5
+  # Host-aware ranking boost for hits whose taxname matches project.host_genus.
+  # Ranking ONLY (never changes the confidence tier). Set 1.0 to disable.
+  # WARNING: usefulness is host-dependent — a host that is heavily represented in
+  # the structure DBs gains the most but also carries the most composition bias.
+  # Needs taxonomy in the hit table + a host_genus set, else it does nothing.
+  host_boost: 1.20
+  # Ranking malus for a low-information name (domain/family/repeat suffix, gene
+  # label, e.g. "SHOCT domain-containing protein"): such a hit must score
+  # 1/malus x higher than a named function to outrank it (0.60 -> 1.67x).
+  # Wrappers (gpNN, "phage protein") get x0.40; names that are uninformative
+  # (hypothetical, DUF) are dropped altogether.
+  low_info_malus: 0.60
+  api_url: https://search.foldseek.com/api   # webAPI search mode
+
+# --- Step 03: comparison thresholds -----------------------------------------
+compare:
+  fuzzy_strong_threshold: 0.35     # Jaccard
+  fuzzy_partial_threshold: 0.08
+  phold_trusted_conf: [high, medium]
+  phold_weak_conf: [low]
+
+# --- Step 04: curation ------------------------------------------------------
+curate:
+  # NetFlaX / VFDB / CARD are reference collections: a PHold hit to one of them
+  # is "close" when phold_fident (fraction of identical residues in PHold's
+  # alignment to the entry, 0-1) >= this value, "remote" below it.
+  # Remote sub-DB hit + CONFIDENT FoldSeek call that names a function
+  #   -> FoldSeek name. NetFlaX close (or FoldSeek only GOOD)
+  #   -> "<FoldSeek name> (NetFlaX-predicted toxin|antitoxin)".
+  # 0.4: high for a remote-homology tool on purpose -- below it the sub-DB entry
+  # is just another distant homologue and a CONFIDENT FoldSeek call is preferred.
+  subdb_close_min_fident: 0.4
+
+# --- Step 06: phynteny ------------------------------------------------------
+phynteny:
+  threshold: 0.8
+
+# --- Optional pre-CDS-computed sub-mode (e.g. citro/eggNOG inputs) -----------
+# Build a base GBK from absolute host-genome coords when there is no Pharokka GBK.
+precomputed:
+  source_genome_fasta:  input/genome/source_genome.fasta
+  prophage_windows_csv: input/fasta/prophage_windows.csv   # prophage,genome_start,genome_stop
+  rich_gene_metadata_csv: input/gene_metadata_rich.csv

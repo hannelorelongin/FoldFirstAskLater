@@ -1,0 +1,21 @@
+phageFACTor curation layer — vendored copy
+==========================================
+
+upstream    https://github.com/TMs-code/phagefactor
+commit      eaa3354f5ff4dddbfc1658dfc6bf8870723efc3b
+tag         v1.1.0
+date        2026-10-27
+copied      2026-10-27
+
+This directory is a SUBSET of the phageFACTor repository, not a fork: only the
+files needed to curate FoldFirstAskLater output are here (steps 03/04/05/07 and
+the library modules they import, incl. lib/taxonomy.py). Steps 00c/01/02 — Pharokka, Phold and the
+FoldSeek search — are absent, because FFAL provides the structural hits.
+
+Do not edit these files here. Edit them upstream and re-copy, or the two copies
+diverge and it stops being clear which one produced a given result. If a change
+is needed urgently, note it below AND open an issue upstream.
+
+local changes to this copy
+--------------------------
+(none)
