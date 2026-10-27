@@ -10,13 +10,15 @@ here; none of them define vocabulary any more.
         tier : 0 uninformative | 1 low information | 2 proper
         tags : subset of TAGS, describing WHY
 
-TIER IS FOR REPORTING ONLY.
+WHERE TIER IS USED
 --------------------------------------------------------------------------------
-No curation decision reads `tier`. Every existing predicate reads TAGS, because
-tags map 1:1 onto the original functions while the tier deliberately collapses
-distinctions that the pipeline treats differently (a tier-1 'low' description is
-a x0.75 score malus on one path and completely ignored on another -- merging
-those is a POLICY change, not a refactor). The 0/1/2 scheme exists so the
+Two places read `tier`: step 04 Case 4 (FoldSeek-only call) does not use a
+tier-1 name with no inferable function as the final annotation (the hit stays
+in the foldseek_* columns and curation_suggestion), and the top-3 majority
+vote never lets a tier-1 name replace a named best hit. Every other predicate
+reads TAGS, because tags map 1:1 onto the original functions while the tier
+collapses distinctions the pipeline treats differently (a tier-1 description
+is a ranking malus on one path and ignored on another). The 0/1/2 scheme exists so the
 rule-based classifier is directly comparable with inPhormer
 (github.com/Mila-MP/inPhormer), which uses the same three tiers.
 
@@ -28,7 +30,8 @@ consequence.
 
   * DROP     (uninformative / uncharacterized) - the hit is discarded.
   * MALUS    (domain/family suffix, gene labels) - the hit is KEPT, its ranking
-             score cut 25%. A dropped hit and a demoted hit are not the same.
+             score multiplied by foldseek.low_info_malus (0.60). A dropped hit
+             and a demoted hit are not the same.
   * UPGRADE  (gene-label / ORF-style only) - swaps in a better top-3 entry.
   * GATE     (curation, step 04) - some gates are intentionally NARROW (only a
              bare structural term counts), others intentionally BROAD.
@@ -47,6 +50,7 @@ answer for e.g. 'Crystal structure of ORF041 from Bacteriophage 37'.
 See classify() for the exact order.
 """
 import re
+from functools import lru_cache
 
 # =============================================================================
 # TAGS
@@ -112,19 +116,40 @@ UNCHAR_PATTERN = re.compile(
     # 'UPF0200 protein MM_1313' is a locus tag; 'UPF0102 protein YraN' is a gene
     # symbol. A DIGIT in the trailing token separates them.
     | ^UPF\d+\s+protein\s+\S*\d
+    # A Pfam ACCESSION used as a name ('PF10979 family protein') is a DUF by
+    # another spelling; 'Group-specific protein' is a placeholder that names
+    # no function.
+    | ^PF\d{5}\b(?:\s+family)?(?:\s+protein)?$
+    | ^group[\s-]specific\s+protein$
     """,
     re.IGNORECASE | re.VERBOSE,
 )
 
-# A3 domain/family SUFFIX -> x0.75 malus.
+# Shared fragments for the wrapper / gene-label patterns below, so the patterns
+# stay nested by construction (PHAGE_WRAPPER_ONLY is a subset of
+# FS_GENERIC_BROAD; GENE_LABEL is a subset of GENERIC_NAMES).
+_WRAP_PREFIX   = r"(?:putative\s+|conserved\s+)?"
+_PHAGE_PROTEIN = r"(?:bacterio)?(?:pro)?phage[\s\-]*(?:associated|related|derived)?\s*protein\b"
+_GP_NAME       = r"gp\d+\w*"
+_GP_HOMOLOG    = r"homolog\s+to\s+.*\bgp\d+.*"
+_Y_GENE        = r"^Y[a-z]{2}[A-Z]\s+protein\s*$|^protein\s+Y[a-z]{2}[A-Z]\s*$"   # YdaW protein / Protein YdaW
+
+# A3 domain/family SUFFIX -> low-information malus (config foldseek.low_info_malus, 0.60).
 GENERIC_DOMAIN = re.compile(
-    r'''family protein$|domain.containing protein$|domain.containing$|homolog$|superfamily.*protein$|related protein$|like protein$''',
+    r'''family protein$|domain.containing protein$|domain.containing$|homolog$|superfamily.*protein$|related protein$|like protein$'''
+    # '-like' only as a bare one-word name ('YodL-like'): 'anti-termination
+    # protein Q-like', 'Arc-like repressor' name a function.
+    r'''|\brepeat(?:[\s-]containing)?(?:\s+family)?\s+protein$|\bdomain\s+protein$|^\S+-like$|\bmotif$''',
     re.IGNORECASE,
 )
 
-# A4 gene-label / ORF-style -> x0.75 malus.
+# A4 gene-label / ORF-style -> low-information malus (same).
 GENERIC_NAMES = re.compile(
-    r'''^UPF\d+\s+protein\b|^Y[a-z]{2}[A-Z]\s+protein\s*$|^Prophage [^,]+,\s*Orf\d+\s*$|^orf\d+\s*$|^protein\d+\s*$''',
+    r'''^UPF\d+\s+protein\b|^Prophage [^,]+,\s*Orf\d+\s*$|^orf\d+\s*$|^protein\d+\s*$'''
+    + "|" + _Y_GENE +
+    # Gene symbols of families with no assigned function outside the y-gene
+    # convention. Explicit names only: 'symbol + protein' would catch RecA/DnaB.
+    r'''|^TnpV\s+protein\s*$''',
     re.IGNORECASE,
 )
 
@@ -179,6 +204,10 @@ GENERIC_DESCRIPTORS = frozenset({
     # guard), so a named FS TA family (HicA/PemK/RelE/...) wins while a bare
     # "toxin" is still kept when nothing more specific is offered.
     "toxin", "antitoxin", "toxin protein", "antitoxin protein",
+    # Cellular LOCATION is not a function.
+    "secreted protein", "exported protein", "cytoplasmic protein",
+    "periplasmic protein", "extracellular protein", "cell surface protein",
+    "membrane-associated protein",
 })
 
 # =============================================================================
@@ -186,7 +215,7 @@ GENERIC_DESCRIPTORS = frozenset({
 # =============================================================================
 # B description-level eukaryote signal (no taxonomy needed).
 EUKARYOTIC_DESC = re.compile(
-    r'''\bHomo\s+sapiens\b|\bhuman\b.*\bprotein\b|\bMus\s+musculus\b|\bSaccharomyces\s+cerevisiae\b|\bCaenorhabditis\b|\bDrosophila\b|\bkinesin\b|\bmyosin\b|\bdynein\b|\bnephrocystin\b|\bBCL.6\b|\bcorepressor\b|\bubiquitin.protein\s+ligase\b|\bERAD.associated\b|\bSEL1.*UBX\b|\bretinoblastoma\b''',
+    r'''\bHomo\s+sapiens\b|\bhuman\b.*\bprotein\b|\bMus\s+musculus\b|\bSaccharomyces\s+cerevisiae\b|\bCaenorhabditis\b|\bDrosophila\b|\bkinesin\b|\bmyosin\b|\bdynein\b|\bnephrocystin\b|\bBCL.6\b|\bcorepressor\b|\bubiquitin.protein\s+ligase\b|\bERAD.associated\b|\bSEL1.*UBX\b|\bretinoblastoma\b|\bubiquitin\s+carboxyl.terminal\s+hydrolase\b|\bactin\s+filament\b|\bkelch\b|\bisoform\s+X\d+\b''',
     re.IGNORECASE,
 )
 
@@ -251,6 +280,13 @@ BACTERIA_KEYWORDS = frozenset({
 # canis / felis / ovis / sus / mus / bos / pan / pongo / equus are all valid
 # bacterial species epithets (Helicobacter canis, Moraxella ovis, Brucella ovis).
 EUKARYOTE_KEYWORDS = frozenset({
+    # plants, fungi, protists, animals seen among FoldSeek hits
+    "gossypium", "medicago", "salix", "crocus", "camptotheca", "micractinium",
+    "symbiodinium", "effrenium", "kipferlia", "neospora", "aphanomyces",
+    "parastagonospora", "trichophyton", "monilinia", "mycosarcoma", "ogataea",
+    "lachancea", "hanseniaspora", "mytilus", "strongylocentrotus", "ornithodoros",
+    "nothobranchius", "branchiostoma", "brugia", "cylicostephanus", "stylophora",
+    "hydra", "bos",
     # Mammals and other animals. Genus alone where unambiguous; binomial where
     # the genus name is also a bacterial species epithet.
     "homo", "homo sapiens", "mus musculus", "rattus", "bos taurus",
@@ -309,9 +345,24 @@ def is_eukaryotic_taxname(taxname):
 # =============================================================================
 # C. PHAGE TERMS
 # =============================================================================
-# C x2.00 boost: a NAMED phage protein.
+# C x2.00 boost: a NAMED phage protein. gpNN is phage gene nomenclature; orfNN is
+# not (any genome numbers its ORFs: 'IS66 family element, orf1') and is handled as a
+# gene label (ORF_STYLE / GENERIC_NAMES), never boosted.
+# Toxin-antitoxin families: a top-3 hit naming one is preferred when phold gives
+# only the TA role ([merge: ta-functionalize]; 'YgiT family' over 'Cro/CI').
+TA_FAMILY = re.compile(
+    r'''\b(?:anti)?toxin\b|\b(?:ygiT|mqsA|mqsR|hicA|hicB|relB|relE|parD|parE|higA|higB|mazE|mazF|vapB|vapC|yefM|yoeB|ccdA|ccdB|hipA|hipB)\b|death.on.curing|addiction.module''',
+    re.I)
+
+# Domains that are part of the protein phold names, not another function:
+# (phold regex, FoldSeek regex, why). Keep phold, no review ([keep-phold: domain-partner]).
+DOMAIN_PARTNERS = [
+    (re.compile(r'\bHNH\b|homing.endonuclease', re.I), re.compile(r'\bAP2\b', re.I),
+     "AP2 is the DNA-binding domain of AP2-HNH homing endonucleases"),
+]
+
 PHAGE_SPECIFIC = re.compile(
-    r'''\bgp\d+\b|\borf\d+\b|terminase|capsid|portal|baseplate|tail.fiber|holin|endolysin|spanin|excisionase|integrase|recombinase|resolvase|invertase|\bbet\b|\bexo\b|anti.repressor|repressor|cro\b|n-protein|o-protein|head.*protein|structural.*protein.*phage|major capsid|minor capsid|tape.measure|anti.crispr|abortive''',
+    r'''\bgp\d+\b|terminase|capsid|portal|baseplate|tail.fiber|\b(?:anti)?holin|endolysin|spanin|excisionase|integrase|recombinase|resolvase|invertase|\bbet\b|\bexo\b|anti.?repressor|(?:\bphage|\bprophage|\blambda|\b434|\bp22|\bc[i12]\b|\bcro\b)[^/,;]{0,40}?\brepressor|\bcro\b|\bdica\b|n-protein|o-protein|head.*protein|structural.*protein.*phage|major capsid|minor capsid|tape.measure|tail.(?:sheath|tube|terminator)|late.control|anti.crispr|abortive''',
     re.IGNORECASE,
 )
 
@@ -321,26 +372,45 @@ PHAGE_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 
-# C x0.40 malus: gpNN-style wrapper, anywhere in the string.
+# C x0.40 malus: a wrapper or placeholder at the start of the name.
 GP_WRAPPER = re.compile(
-    r'''^(putative\s+|conserved\s+)?((bacterio)?(pro)?phage\s+protein\b|gp\d+\w*|\S*\s*gp\d+\b|mu-?like\s+prophage|hypothetical\s+protein|uncharacteri[sz]ed)''',
+    r"^" + _WRAP_PREFIX + r"(?:" + _PHAGE_PROTEIN + r"|" + _GP_NAME
+    + r"|\S*\s*gp\d+\b|mu-?like\s+prophage|hypothetical\s+protein|uncharacteri[sz]ed)",
     re.IGNORECASE,
 )
 
 # =============================================================================
 # D. DEFENSE
 # =============================================================================
-DEFENSE_PATTERN = re.compile(
-    r'''defense.associated|restriction.modification|anti-phage|anti.viral|abortive infection|\brm system\b|\bdefense system\b|\bmazEF\b|\bmazF\b|\bmazE\b|\brloG\b|\brloC\b|\brloH\b|\bVapB\b|\bVapC\b|\bSymE\b|\bSymR\b|\bGao\b.*defense|\bMMB\b.*defense|toxin.antitoxin|antitoxin.*toxin''',
-    re.IGNORECASE,
+# One vocabulary, two groups:
+#
+#   DEFENSE_SYSTEM_TERMS  defense in the BROAD sense: anti-phage / immune
+#                         systems AND the arms race around them (restriction
+#                         alleviation Lar, anti-restriction ArdC, anti-CRISPR,
+#                         immunity proteins) -> category "defense" (rules.py)
+#   DEFENSE_TA_TERMS      toxin-antitoxin families
+#                         -> category rules.TA_CATEGORY (PHROG convention: moron)
+#   DEFENSE_ANY = both    -> the FoldSeek defense FLAG (step 02,
+#                            foldseek_scoring / 02d) and the curation-side "is
+#                            this a defense/TA call" check (step 04)
+# Add a term ONCE, here; every consumer picks it up.
+# 'toxin' followed by secretion/translocation/transport/export is a secretion
+# system or holin ('Toxin secretion/phage lysis holin'), not a TA toxin.
+DEFENSE_SYSTEM_TERMS = (
+    r"defen[cs]e|anti.?phage|anti.?viral|abortive.infection|\babi[A-Z]\b"
+    r"|restriction|\bRM\b\s*system|\bimmunity\b"
+    r"|\bCBASS\b|\bSMODS\b|\bSLATT\b|\bPARIS\b|\brlo[GCH]\b|\bsir\s*2\b|\bsirtuin\b"
+    r"|\bCami1\b|\bCARF\b|type.III.CRISPR|anti.?crispr"
 )
+DEFENSE_TA_TERMS = (
+    r"toxin.antitoxin|\bantitoxin\b|\btoxin\b(?!\s+(?:\S+\s+)?(?:secretion|translocation|transport|export))|\bmaz[EF]{1,2}\b|\bpem[IK]\b|\brel[BE]\b|\bhic[AB]\b"
+    r"|\bvap[BC]\b|\bhig[AB]\b|\byoeB\b|\bpar[DE]\b|\bphd\b|death.on.curing|\bdoc\b"
+    r"|\bsym[ER]\b|netflax"
+)
+DEFENSE_SYSTEM = re.compile(DEFENSE_SYSTEM_TERMS, re.IGNORECASE)
+DEFENSE_TA     = re.compile(DEFENSE_TA_TERMS, re.IGNORECASE)
+DEFENSE_ANY    = re.compile(DEFENSE_SYSTEM_TERMS + "|" + DEFENSE_TA_TERMS, re.IGNORECASE)
 
-# D curation-side defense gate. Deliberately SEPARATE from
-# DEFENSE_PATTERN: the two have different widths and different consequences.
-DEFENSE_DESC = re.compile(
-    r'''\b(anti)?toxin\b|toxin-antitoxin|abortive\s+infection|anti-?crispr|anti-?phage|defen[cs]e|restriction|\bcbass\b|\bparis\b|\bRM\b\s*system|immunity|\bmazE?F?\b|\brel[BE]\b|\bhic[AB]\b|\bvap[BC]\b|\bhig[AB]\b|\byoeB\b|\bpar[DE]\b|\bphd\b|death.on.curing|\bdoc\b|\babi[A-Z]\b|\bsir\s*2\b|\bsirtuin\b|\brloG\b''',
-    re.IGNORECASE,
-)
 
 # =============================================================================
 # E. PROMISCUOUS FOLDS (fold != function)
@@ -392,6 +462,9 @@ RELEVANT_DOMAINS = [
     ('GIY[- ]?YIG', 'GIY-YIG',
      'endonuclease',
      'Dunin-Horkawicz 2006 PMID PMC1564403'),
+    ('HEPN', 'HEPN',
+     'ribonuclease',
+     'Anantharaman 2013 Biol Direct PMID 23768067'),
     ('CBS', 'CBS',
      'ligand-binding regulatory protein (adenosine/energy sensor)',
      'Ereno-Orbea 2013 PNAS PMID 24344311'),
@@ -407,18 +480,19 @@ FS_GENERIC = re.compile(
     re.IGNORECASE,
 )
 
-# A8 BROAD generic-FoldSeek gate.
+# A8 BROAD generic-FoldSeek gate (superset of PHAGE_WRAPPER_ONLY).
 # Deliberately WIDER than FS_GENERIC: see the module docstring on widths.
 FS_GENERIC_BROAD = re.compile(
-    r'''^(putative\s+|conserved\s+)?((bacterio)?(pro)?phage[\s\-]*(associated|related|derived)?\s*protein\b.*|gp\d+\w*|\S*\s*gp\d+\b.*|mu-?like\s+prophage.*|.*\bhk97\b.*|phage\s+(nucleotide-?binding|minor\s+structural|structural|virion\s+morphogenesis|derived|associated)\s+protein.*|atp-?binding protein|atpase|dna-?damage-?inducible protein.*|prophage\s+\w+\s+protein\s+\d+|.*\b(ig-?like|asch|atp-grasp|duf\d+|zinc[\s\-]?(ribbon|finger))\s+domain.?containing\s+protein.*|pentapeptide\s+repeat.*|tigr\d+\s+family\s+protein.*|chp\d+.*|.*\b[nc]-?terminal\s+domain.?containing\s+protein|.*\b(macro|jmjc|toprim)\s+domain.?containing\s+protein|(uncharacteri[sz]ed|hypothetical)\s+protein.*)$''',
+    r"^" + _WRAP_PREFIX + r"(?:" + _PHAGE_PROTEIN + r".*|" + _GP_NAME + r"|" + _GP_HOMOLOG
+    + r'''|\S*\s*gp\d+\b.*|mu-?like\s+prophage.*|.*\bhk97\b.*|phage\s+(nucleotide-?binding|minor\s+structural|structural|virion\s+morphogenesis|derived|associated)\s+protein.*|atp-?binding protein|atpase|dna-?damage-?inducible protein.*|(?:pro)?phage\s+\w+\s+protein\s+\d+|.*\b(ig-?like|asch|atp-grasp|duf\d+|zinc[\s\-]?(ribbon|finger))\s+domain.?containing\s+protein.*|pentapeptide\s+repeat.*|tigr\d+\s+family\s+protein.*|chp\d+.*|.*\b[nc]-?terminal\s+domain.?containing\s+protein|.*\b(macro|jmjc|toprim)\s+domain.?containing\s+protein|(uncharacteri[sz]ed|hypothetical)\s+protein.*)$''',
     re.IGNORECASE,
 )
 
-# C ANCHORED wrapper. Distinct from
-# GP_WRAPPER: this one must match from the START, so 'baseplate phage
-# protein' is NOT a wrapper.
+# C ANCHORED wrapper: the whole name is a wrapper, so 'baseplate phage
+# protein' is NOT one (unlike GP_WRAPPER, which only reads the start).
 PHAGE_WRAPPER_ONLY = re.compile(
-    r'''^(putative\s+|conserved\s+)?((bacterio)?(pro)?phage[\s\-]*(associated|related|derived)?\s*protein\b.*|gp\d+\w*|phage\s+protein\s+(gp)?\d+.*|homolog\s+to\s+.*\bgp\d+.*)$''',
+    r"^" + _WRAP_PREFIX + r"(?:" + _PHAGE_PROTEIN + r".*|" + _GP_NAME
+    + r"|phage\s+protein\s+(?:gp)?\d+.*|" + _GP_HOMOLOG + r")$",
     re.IGNORECASE,
 )
 
@@ -429,12 +503,8 @@ EUKA_RESCUE = re.compile(
     re.IGNORECASE,
 )
 
-# A4b single Y-gene label (subset of
-# GENERIC_NAMES, kept separate because it drives an UPGRADE, not a malus)
-GENE_LABEL = re.compile(
-    r'''^Y[a-z]{2}[A-Z]\s+protein\s*$''',
-    re.IGNORECASE,
-)
+# A4b single Y-gene label (subset of GENERIC_NAMES): drives an UPGRADE, not a malus.
+GENE_LABEL = re.compile(_Y_GENE, re.IGNORECASE)
 
 # =============================================================================
 # I. FUNCTIONAL EQUIVALENCE GROUPS
@@ -476,7 +546,7 @@ COMPLEMENTARY_CATEGORY_MAP = {
                                 "reca", "rect", "sbc", "methyltransferase",
                                 "deoxyribosyltransferase", "partition", "chromosome partitioning",
                                 "parb", "para", "soj", "korb", "atpase", "aaa", "atp-binding",
-                                "primosome", "terminase"],
+                                "primosome", "terminase", "hth", "dna-binding"],
     # Fe-S redox enzymes carried as morons: Fe-S-cluster redox ~ Fe-S-oxidoreductase.
     "moron, auxiliary metabolic gene and host takeover": ["toxin", "antitoxin", "amg",
                                 "secreted", "effector", "oxidoreductase", "redox",
@@ -496,7 +566,7 @@ _RELEVANT_PATTERNS = [
 
 def strip_fragment(desc):
     """Drop a trailing '(Fragment)'. Used before the generic/domain tests, to
-    match _phage_boost_factor, which strips it before applying the x0.75."""
+    match _phage_boost_factor, which strips it before applying the malus."""
     return re.sub(r"\s*\(fragment\)\s*$", "", str(desc).strip(), flags=re.IGNORECASE)
 
 
@@ -524,7 +594,7 @@ def relevant_domain(description):
 
 
 def classify(desc):
-    """Return (tier, tags). ONE pass, no side effects.
+    """Return (tier, tags). ONE pass, no side effects; tags is a frozenset.
 
     Order matters and mirrors the original predicates exactly:
       1. exact blocklist on the lowercased, stripped string;
@@ -535,12 +605,19 @@ def classify(desc):
       4. phage-specific and phage-context are mutually exclusive (elif), as in
          _phage_boost_factor.
     """
-    tags = set()
     if not desc or not isinstance(desc, str):
-        return TIER_UNINFORMATIVE, tags
+        return TIER_UNINFORMATIVE, frozenset()
+    return _classify_str(desc)
+
+
+# Cached: a FoldSeek hit table repeats each description many times
+# (~8 hits per unique description), and every predicate below calls classify().
+@lru_cache(maxsize=None)
+def _classify_str(desc):
+    tags = set()
     d = desc.strip()
     if not d:
-        return TIER_UNINFORMATIVE, {TAG_UNCHARACTERIZED}
+        return TIER_UNINFORMATIVE, frozenset({TAG_UNCHARACTERIZED})
     # A blocklisted string is uninformative but must STILL collect its other
     # tags: 'Hypothetical protein' also matches GP_WRAPPER, and
     # _phage_boost_factor applies the x0.40 wrapper malus regardless.
@@ -583,9 +660,10 @@ def classify(desc):
         tags.add(TAG_PROMISCUOUS)
     if EUKARYOTIC_DESC.search(d):
         tags.add(TAG_EUKARYOTIC)
-    if DEFENSE_PATTERN.search(d):
+    if DEFENSE_ANY.search(d):
         tags.add(TAG_DEFENSE)
 
+    tags = frozenset(tags)   # cached result: must not be mutable
     if tags & {TAG_UNCHARACTERIZED, TAG_DUF, TAG_STRUCTURAL_TERM}:
         return TIER_UNINFORMATIVE, tags
     if tags & {TAG_DOMAIN_SUFFIX, TAG_GENE_LABEL, TAG_ORF_STYLE, TAG_WRAPPER}:

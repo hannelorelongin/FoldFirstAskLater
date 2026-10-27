@@ -27,11 +27,8 @@ from lexicon import UNCHAR_PATTERN
 def _blocked(raw) -> bool:
     """True if a description carries no functional information.
 
-    This side used to test the exact blocklist ONLY. Commit 2 moved eight of
-    those entries into UNCHAR_PATTERN (as regex alternatives that also catch the
-    variants an exact list cannot enumerate), so without consulting the pattern
-    here those descriptions would silently become informative on the
-    PHold/pharokka path.
+    Tests both the exact blocklist and UNCHAR_PATTERN, the same rules the
+    FoldSeek side uses, so PHold/pharokka products are judged identically.
     """
     s = str(raw).strip()
     return (s.lower() in UNINFORMATIVE_STRINGS
@@ -415,7 +412,10 @@ def build_note(source: str,
     if foldseek_score is not None and not _is_nan(foldseek_score):
         parts.append(f"foldseek_score={foldseek_score:.0f}")
     if foldseek_pident is not None and not _is_nan(foldseek_pident):
-        parts.append(f"foldseek_pident={foldseek_pident:.1f}%")
+        # FoldSeek fident is a 0-1 fraction; print it as a percentage
+        _pid = float(foldseek_pident)
+        _pid = _pid * 100 if _pid <= 1 else _pid
+        parts.append(f"foldseek_pident={_pid:.1f}%")
     parts.append("original_pharokka=hypothetical protein")
     return "; ".join(parts)
 

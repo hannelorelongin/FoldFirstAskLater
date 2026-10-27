@@ -11,33 +11,21 @@ category". The distinction is not cosmetic --
   * a rule here is (pattern -> action) and FIRST MATCH WINS. Adding a rule at the
     top can shadow every rule below it.
 
-Two things live here:
+What lives here:
 
-  UPGRADE_RULES   (used by 04_curate) -- (desc_pattern, top3_pattern, replacement)
-                  Swap a generic winning name for a specific one already present
-                  in the top-3 FoldSeek hits.
-  FUNC_CAT_RULES  (used by 04_curate) -- desc -> PHROG category, for genes with
-                  no PHold call at all.
-  CAT_KEYWORDS + PHROG_CANON + phrog_category()  (used by 05_build_output) --
-                  desc -> PHROG category at the OUTPUT layer, for genome-mode
-                  pharokka passthrough rows.
-  make_short_name()  (used by 05_build_output and 07_integrate) -- final_product
-                  -> a concise `short_name`. Same shape as UPGRADE_RULES (ordered
-                  rewrite rules on a product string), so it lives here rather
-                  than in a module of its own; it writes a DIFFERENT column,
-                  which is the only reason it is a separate function.
-
-KNOWN OVERLAP, deliberately not yet merged
-------------------------------------------
-FUNC_CAT_RULES and CAT_KEYWORDS both map a description onto a PHROG category and
-their patterns overlap, but they are NOT interchangeable: FUNC_CAT_RULES runs
-during curation on hypothetical genes with no PHold category, CAT_KEYWORDS runs
-at output on pharokka products that already have a real product name, and it
-also has the `defense`/`other`/`unknown function` fallbacks that curation does
-not use. Merging them would change output categories, so they are kept apart --
-side by side here, where the difference is visible.
+  UPGRADE_RULES    (step 04) -- (desc_pattern, top3_pattern, replacement): swap a
+                   generic winning name for a specific one in the FoldSeek top-3.
+  CATEGORY_RULES   (steps 04, 05, 07) -- description -> PHROG category.
+                   category_from_text() / phrog_category() apply it.
+  make_short_name() (steps 05, 07) -- final_product -> a concise `short_name`.
 """
 import re
+
+from lexicon import DEFENSE_SYSTEM_TERMS, DEFENSE_TA_TERMS, PHAGE_SPECIFIC, PHAGE_CONTEXT
+
+# Category of a toxin-antitoxin gene. PHROG / PHold convention: TA genes are
+# morons. Set it to "defense" to count TA systems as defense everywhere.
+TA_CATEGORY = "moron, auxiliary metabolic gene and host takeover"
 
 
 # =============================================================================
@@ -128,6 +116,29 @@ UPGRADE_RULES = [
     (re.compile(r'^UPF\d+\s+protein\s+([A-Za-z]+)$'),
      None,
      r"\1"),
+    # "Bacteriophage T4, Gp53, baseplate wedge protein" -> "baseplate wedge
+    # protein": the phage + gp number say where the reference structure came
+    # from; the function is the part after them.
+    (re.compile(r'^(?:bacterio)?phage\s+[^,]+,\s*gp\s?\d+\w*,\s*(.+)$', re.I),
+     None,
+     r"\1"),
+    # DksA C4-type zinc-finger domain = the DksA/TraR family of small
+    # RNA-polymerase-binding regulators (phage/plasmid TraR-like proteins).
+    # Named, not just stripped: stripping "domain-containing protein" blindly
+    # would turn "Zinc ribbon domain-containing protein" into "Zinc ribbon".
+    (re.compile(r'^DksA C4-type domain.containing protein$', re.I),
+     None,
+     "DksA/TraR family C4-type zinc finger protein"),
+    # SMODS-associating 2TM effector = SLATT domain: membrane effector of
+    # CBASS-like (SMODS nucleotidyltransferase) conflict systems (Burroughs 2015).
+    (re.compile(r'^SMODS.associating 2TM.*$', re.I),
+     None,
+     "SMODS-associated 2TM effector (SLATT domain)"),
+    # Cami1: cA4-activated CARF-RelE ribonuclease of type III CRISPR-Cas,
+    # captured by the ribosomal stalk (PDB 8PHB / 8PHJ).
+    (re.compile(r'^Cami1$', re.I),
+     None,
+     "Cami1 (CARF-RelE ribonuclease, type III CRISPR ancillary)"),
     # "70S-PHIKZ014": phage protein solved bound to the 70S ribosome (8CD1).
     # Looks like a locus tag, but the complex IS the functional evidence.
     (re.compile(r'^(?:30S|50S|70S)[-_ ]([A-Za-z0-9]+)$'),
@@ -136,80 +147,83 @@ UPGRADE_RULES = [
 ]
 
 # =============================================================================
-# FUNCTION CATEGORY, curation side (step 04)
+# FUNCTION CATEGORY (steps 04, 05, 07)
 # =============================================================================
-FUNC_CAT_RULES = [
-    (re.compile(r'transcription.{0,4}regulat|ci.repressor|sigma.factor|copG|NrdR|'
-                r'anti.repressor|HTH.cro|bacteriophage.ci|Com.family.DNA.binding|'
-                r'repressor.protein|winged.helix', re.I),
-     "transcription regulation"),
-    (re.compile(r'DNA.helicase|RNA.polymerase|DNA.gyrase|topoisomerase|'
-                r'GemA.DNA.gyrase|gp16.*gyrase|replication.initiation|'
-                r'DNA.transposition|primase|DNA.repair', re.I),
-     "DNA, RNA and nucleotide metabolism"),
-    (re.compile(r'tail.fiber|tail.protein|tail.assembly|baseplate|'
-                r'head.decoration|major.tail|minor.tail|tape.measure|'
-                r'Phage.tail', re.I),
-     "tail"),
-    (re.compile(r'portal.protein|head.morphogenesis|capsid|head.and.packaging', re.I),
-     "head and packaging"),
-    (re.compile(r'head.tail.connector|head.to.tail.connector|connector.protein|'
-                r'gp6.like.head.tail|neck.protein', re.I),
-     "connector"),
-    (re.compile(r'RloG|defense.system|abortive.infection|anti.crispr|anti.phage', re.I),
-     "defense"),
-    (re.compile(r'integrase|excisionase|transposase|resolvase|invertase', re.I),
-     "integration and excision"),
-    (re.compile(r'beta.lactamase|antibiotic.resistance', re.I),
-     "moron, auxiliary metabolic gene and host takeover"),
-    (re.compile(r'deoxyribonuclease|endonuclease|restriction.endonuclease|'
-                r'HNH.endonuclease', re.I),
-     "DNA, RNA and nucleotide metabolism"),
-    # Host-derived metabolic enzymes, ribosomal proteins and metal-uptake
-    # regulators carried by the prophage are auxiliary metabolic / host-takeover
-    # morons. (Only applied when phold left the category 'unknown' -- see
-    # _infer_function_cat -- so phold's own category calls are never overwritten.)
-    (re.compile(r'ribosom|zinc.uptake|\bzur\b|fur.family|\bkinase\b|'
-                r'oxidoreductase|dehydrogenase|transaldolase|aldolase|racemase|'
-                r'reductase|permease|dehydratase|\bsynthase\b|isomerase|epimerase|'
-                r'\bmutase\b|\bphosphatase\b|sialyltransferase', re.I),
-     "moron, auxiliary metabolic gene and host takeover"),
-    (re.compile(r'antitoxin|RelB|HicB|MazE', re.I),
-     "other"),   # toxin-antitoxin systems
-]
-
-# =============================================================================
-# FUNCTION CATEGORY, output side (step 05)
-# =============================================================================
+# One ordered map, description -> PHROG category; first match wins. Specific
+# phrases come before the broad words they contain ("terminase endonuclease"
+# is head and packaging, "tail lysozyme" is tail, "restriction endonuclease"
+# is defense), and generic enzyme classes come last.
 PHROG_CANON = {"head and packaging", "connector", "tail",
-                "DNA, RNA and nucleotide metabolism", "integration and excision",
-                "transcription regulation", "lysis",
-                "moron, auxiliary metabolic gene and host takeover",
-                "other", "unknown function"}
+               "DNA, RNA and nucleotide metabolism", "integration and excision",
+               "transcription regulation", "lysis",
+               "moron, auxiliary metabolic gene and host takeover",
+               "other", "unknown function"}
 
-CAT_KEYWORDS = [
-    (re.compile(r"integrase|recombinase|excisionase|transposase|resolvase|invertase|att(achment)? site", re.I), "integration and excision"),
-    (re.compile(r"holin|endolysin|\blysin\b|lysozyme|spanin|\blysis\b|cell.wall (hydrolase|amidase)", re.I), "lysis"),
-    (re.compile(r"terminase|portal|\bcapsid\b|prohead|procapsid|scaffold|head (protein|maturation|completion|decoration|closure)|major head|packaging", re.I), "head and packaging"),
-    (re.compile(r"head.?tail|connector|\bneck\b|adaptor|adapter|stopper", re.I), "connector"),
-    (re.compile(r"\btail\b|baseplate|tape.measure|fib(er|re)|spike|sheath|\btube\b|whisker|virion structural|distal tail|Dit\b|tail terminator", re.I), "tail"),
-    (re.compile(r"helicase|polymerase|primase|exonuclease|endonuclease|nuclease|\bkinase\b|methyltransferase|methylase|\bligase\b|replicati|topoisomerase|single.strand|ssDNA|ssb\b|nucleotide|ribonucleotide|DNA.binding|recombination|annealing|Holliday", re.I), "DNA, RNA and nucleotide metabolism"),
-    (re.compile(r"repressor|regulator|\bcro\b|\bci\b|antiterminat|anti.terminat|transcription|sigma.factor|\bHTH\b|anti.repressor|Cox\b", re.I), "transcription regulation"),
-    (re.compile(r"defen[cs]e|restriction|toxin|antitoxin|abortive infection|anti.crispr|\bCBASS\b|\bPARIS\b|\bRM\b system|immunity", re.I), "defense"),
-    (re.compile(r"ribosom|\bzur\b|fur.family|oxidoreductase|dehydrogenase|reductase|transferase|permease|metaboli|tRNA|amino.acid|sugar|transport|hydrolase|phosphatase|synthase|isomerase|racemase|epimerase|moron", re.I), "moron, auxiliary metabolic gene and host takeover"),
+_DNA = "DNA, RNA and nucleotide metabolism"
+_MORON = "moron, auxiliary metabolic gene and host takeover"
+
+CATEGORY_RULES = [
+    # structural phrases that contain a broader enzyme / regulator word
+    (re.compile(r"terminase|portal|\bcapsid\b|prohead|procapsid|scaffold|head.morphogenesis|"
+                r"head (protein|maturation|completion|closure)|major head|packaging", re.I),
+     "head and packaging"),
+    (re.compile(r"head.?(to.?)?tail|connector|\bneck\b|adaptor|adapter|stopper", re.I),
+     "connector"),
+    (re.compile(r"\btail\b|baseplate|tape.measure|\bfib(er|re)|\bspike\b|sheath|"
+                r"\btube\b|whisker|virion structural|\bDit\b|head.decoration", re.I),
+     "tail"),
+    (re.compile(r"integrase|recombinase|excisionase|transposase|resolvase|invertase|"
+                r"att(achment)? site", re.I),
+     "integration and excision"),
+    (re.compile(r"\b(?:anti)?holin|endolysin|\blysin\b|lysozyme|spanin|\blysis\b|"
+                r"cell.wall (hydrolase|amidase)|muramidase|amidase", re.I),
+     "lysis"),
+    # defense before DNA metabolism, so 'Restriction endonuclease' is defense
+    (re.compile(DEFENSE_SYSTEM_TERMS, re.I), "defense"),
+    (re.compile(DEFENSE_TA_TERMS, re.I), TA_CATEGORY),
+    # regulators before DNA metabolism: an HTH / sigma factor binds DNA to regulate
+    (re.compile(r"transcription|repressor|\bregulator\b|regulatory protein|\bcro\b|"
+                r"\bci\b|anti.?terminat|sigma.factor|\bHTH\b|helix.turn.helix|winged.helix|copG|NrdR|\bCox\b|"
+                r"DksA|\bTraR\b|RNAP.interacting", re.I),
+     "transcription regulation"),
+    (re.compile(r"beta.lactamase|antibiotic.resistance", re.I), _MORON),
+    (re.compile(r"helicase|polymerase|primase|nuclease|\bRNase\b|DNA.?methyl|"
+                r"cytosine.?methyl|adenine.?methyl|\bmethylase|\bligase\b|replicati|"
+                r"topoisomerase|gyrase|single.strand|ssDNA|\bssb\b|nucleotid|DNA.binding|DNA.repair|recombination|"
+                r"annealing|Holliday|transposition", re.I),
+     _DNA),
+    # host-derived metabolic enzymes, ribosomal proteins, transporters
+    (re.compile(r"ribosom|zinc.uptake|\bzur\b|fur.family|\bkinase\b|oxidoreductase|"
+                r"dehydrogenase|reductase|aldolase|racemase|permease|dehydratase|"
+                r"\bsynthase\b|synthetase|isomerase|epimerase|\bmutase\b|phosphatase|"
+                r"transferase|metaboli|tRNA|amino.acid|sugar|transport|moron", re.I),
+     _MORON),
+    # an enzyme class is a function even without a PHROG category of its own
+    (re.compile(r"peptidase|protease|glycosidase|hydrolase|esterase|\blyase\b", re.I),
+     "other"),
 ]
+
+
+def category_from_text(text: str) -> str:
+    """PHROG category inferred from a description, or 'unknown function'."""
+    if not text or not isinstance(text, str):
+        return "unknown function"
+    for pat, cat in CATEGORY_RULES:
+        if pat.search(text):
+            return cat
+    return "unknown function"
+
 
 def phrog_category(function, product):
-    """Return a canonical PHROG category. Keep `function` if already canonical,
-    else infer from the product via the keyword map; else other/unknown."""
+    """Canonical PHROG category: keep `function` if already canonical, else infer
+    it from product + function text; else 'other' (non-empty) / 'unknown function'."""
     f = str(function or "").strip()
     if f in PHROG_CANON:
         return f
-    text = f"{product or ''} {f}"
-    for pat, cat in CAT_KEYWORDS:
-        if pat.search(text):
-            return cat
-    return "other" if f and f.lower() not in ("", "nan", "na") else "unknown function"
+    cat = category_from_text(f"{product or ''} {f}")
+    if cat != "unknown function":
+        return cat
+    return "other" if f and f.lower() not in ("nan", "na") else "unknown function"
 
 
 # =============================================================================
@@ -306,6 +320,104 @@ def _strip_decoration(s: str) -> str:
         prev = s
         s = _LEADING.sub("", s).strip()
     return s.strip() or prev
+
+
+# -----------------------------------------------------------------------------
+# PRODUCT-NAME CLEAN-UP (used by the FoldSeek top-3 vote, foldseek_scoring)
+# -----------------------------------------------------------------------------
+# Database titles often decorate a correct name: a hedge ('Putative ...'), a
+# phage-lineage family suffix (', HK97 family', ', TP901 family, core region'),
+# a fragment tag, or an organism prefix ('Cyanophage A-1(L) tail fiber',
+# 'Bacteriophage lambda head decoration protein D'). Unlike _strip_decoration
+# (short_name), this keeps a full name: 'Phage portal protein' stays as is.
+_HEDGE_PREFIX = re.compile(r"^(?:putative|probable|possible|predicted)\s+", re.I)
+_HEDGE_INNER  = re.compile(r",\s*(?:putative|probable|possible|predicted)\b", re.I)
+_FAMILY_TAIL  = re.compile(r"(?:,\s*[^,]*\b(?:family|subfamily|superfamily|region)\b[^,]*)+$", re.I)
+_ORGANISM_PFX = re.compile(r"^(?:bacteriophage|cyanophage|enterobacteria\s+phage|phage)\s+"
+                           r"(?!gp\d)(?:lambda|mu|[a-z0-9()\-]*\d[a-z0-9()\-]*)\s+", re.I)
+# fragment/partial, EC number, 'from bacteriophage X', 'lambda family',
+# 'HK97 gpNN family', ACLAME tag, '(Modular protein)'
+_NAME_DECORATION = tuple(_DECORATION[i] for i in (0, 1, 3, 6, 7, 8, 9))
+# phage STRUCTURAL proteins: there a ', X family' suffix is a lineage label
+# ('Phage portal protein, HK97 family'); on regulators/toxins it is the function
+# ('Phage transcriptional regulator, RinA family', 'Addiction module toxin, HicA family')
+_STRUCTURAL = re.compile(r"portal|capsid|\btail|tape.measure|baseplate|terminase|\bhead\b|\bneck\b|"
+                         r"connector|sheath|\btube\b|scaffold|decoration|prohead|collar|fib(?:er|re)", re.I)
+# a named phage function, gpNN labels excluded ('GpU' alone is no phage context)
+_PHAGE_FUNCTION = re.compile(rf"(?!gp\d)(?:{PHAGE_SPECIFIC.pattern})|{_STRUCTURAL.pattern}", re.I)
+_NAME_STOP = {"protein", "proteins", "phage", "prophage", "bacteriophage", "putative",
+              "probable", "possible", "predicted", "family", "the", "of", "and", "a",
+              "fragment", "like"}
+
+
+def _core_words(name: str) -> set:
+    return {t for t in re.findall(r"[a-z0-9]+", name.lower()) if t not in _NAME_STOP}
+
+
+def clean_name(desc: str) -> str:
+    """'Putative phage tail tube protein'            -> 'Phage tail tube protein'
+       'Phage portal protein, putative, A118 family' -> 'Phage portal protein'
+       'Cyanophage A-1(L) tail fiber'                -> 'Tail fiber'
+       'Addiction module toxin, HicA family'         -> unchanged (family IS the information)
+    A name is never cleaned into one without content words; then it is returned as is."""
+    orig = str(desc or "").strip()
+    d = orig
+    for pat in _NAME_DECORATION:
+        d = pat.sub("", d)
+    d = _HEDGE_INNER.sub("", d)
+    d = _HEDGE_PREFIX.sub("", d).strip()
+    # a lineage/family suffix on a phage STRUCTURAL protein adds little; elsewhere keep it
+    stripped = _FAMILY_TAIL.sub("", d).strip(" ,")
+    if stripped != d and len(stripped.split()) >= 2 and _STRUCTURAL.search(stripped):
+        d = stripped
+    # drop an organism prefix only when the rest still names a phage function
+    # ('Phage P1 portal protein' -> 'Portal protein'); 'Phage P2 GpU' and
+    # 'Bacteriophage Mu P protein' keep it, as it is their only phage context
+    rest = _ORGANISM_PFX.sub("", d).strip(" ,")
+    if rest != d and _PHAGE_FUNCTION.search(rest):
+        d = rest
+    if d == orig or not _core_words(d):
+        return orig                       # untouched (case included), or nothing left
+    # capitalise only a plain word exposed by removing a prefix ('putative tail
+    # tube' -> 'Tail tube'); keep 'rRNA', 'dnaB', 'IS110' as they are
+    if d[:1].islower() and d[1:2].islower() and orig[:1].isupper():
+        d = d[:1].upper() + d[1:]
+    return d
+
+
+def name_alternatives(desc: str) -> list:
+    """Core-word sets of a cleaned name; 'A/B' names give one set per alternative."""
+    return [w for w in (_core_words(a) for a in re.split(r"\s*/\s*", clean_name(desc))) if w]
+
+
+# Words that make a different protein of the one they qualify: a helper
+# ('tail fiber ASSEMBLY protein'), an opponent ('ANTI-repressor', 'integrase
+# INHIBITOR') or a partner ('integrase-BINDING protein').
+_OTHER_PROTEIN = re.compile(
+    r"^(?:anti\w*|assembly|chaperone|chaperonin|inhibitor|binding|maturation|"
+    r"activator|modulator|regulator|regulatory|adaptor|adapter|scaffold\w*)$", re.I)
+
+
+def _function_words(name: str) -> list:
+    """Core-word sets per alternative, with 'anti-X'/'X-binding' split so the
+    qualifier is its own word."""
+    return [_core_words(re.sub(r"[-/]", " ", a))
+            for a in re.split(r"\s*/\s*", clean_name(name)) if _core_words(a)]
+
+
+def same_function(a: str, b: str) -> bool:
+    """One name's core words are contained in the other's (for any alternative),
+    and the extra words do not make it another protein:
+    'Portal protein' ~ 'Phage portal protein, HK97 family';
+    'Putative transposase/integrase' ~ 'Site-specific integrase';
+    NOT 'Phage tail sheath' ~ 'Phage tail tape measure protein';
+    NOT 'Tail fiber protein' ~ 'Tail fiber assembly protein'; NOT 'Repressor' ~ 'Anti-repressor'."""
+    for x in _function_words(a):
+        for y in _function_words(b):
+            if x <= y or y <= x:
+                if not any(_OTHER_PROTEIN.match(w) for w in x ^ y):
+                    return True
+    return False
 
 
 def make_short_name(final_product, phold_phrog=None) -> str:

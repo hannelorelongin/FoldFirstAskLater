@@ -108,7 +108,7 @@ def main():
                     help="06_phynteny/phynteny.tsv. OPTIONAL: omit it to run in "
                          "SYNTENY-ONLY mode (C1/Cro + positional hints from the GBK, "
                          "no phynteny categories). Useful when phynteny is not "
-                         "installed, e.g. the FFAL integration.")
+                         "installed.")
     ap.add_argument("--out", required=True)
     ap.add_argument("--threshold", type=float, default=0.8)
     ap.add_argument("--overrides", default=str(_SCRIPTS.parent / "input" / "overrides.tsv"),
@@ -193,48 +193,25 @@ def main():
         m.at[i, "final_function"] = pc          # phynteny priority
     m = m.drop(columns=["_cat", "_conf"], errors="ignore")
 
-    # ---- FIX 1: normalise final_function to a PHROG category --------------------
+    # ---- normalise final_function to a PHROG category ---------------------------
     # Genome mode passes pharokka-annotated genes straight through, so their
-    # final_function is a PRODUCT string ("portal protein", "integrase", "DNA
-    # methyltransferase") not a PHROG category. Map any non-canonical value to a
-    # category from the product via the same _FUNC_CAT_RULES used in step 04.
-    _CANON = {"head and packaging", "connector", "tail",
-              "DNA, RNA and nucleotide metabolism", "integration and excision",
-              "transcription regulation", "lysis",
-              "moron, auxiliary metabolic gene and host takeover",
-              "other", "unknown function"}
-    # _FUNC_CAT_RULES lives in 04_curate_annotations; import defensively.
-    _FUNC_CAT_RULES = []
-    try:
-        import importlib.util as _ilu, sys as _sys
-        _spec = _ilu.spec_from_file_location("_c4mod", str(_SCRIPTS / "04_curate_annotations.py"))
-        _mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_mod)
-        _FUNC_CAT_RULES = getattr(_mod, "_FUNC_CAT_RULES", [])
-    except Exception as e:
-        print(f"  (could not load _FUNC_CAT_RULES: {e}; function normalisation skipped)")
+    # final_function can be a PRODUCT string ("portal protein"), not a category.
+    from rules import PHROG_CANON, category_from_text
     n_normfn = 0
-    if _FUNC_CAT_RULES:
-        for i, r in m.iterrows():
-            ff = str(r["final_function"]).strip()
-            if ff in _CANON:
-                continue
-            cat = "other"
-            for pat, c in _FUNC_CAT_RULES:
-                if pat.search(str(r["final_product"])):
-                    cat = c; break
-            m.at[i, "final_function"] = cat
-            n_normfn += 1
+    for i, r in m.iterrows():
+        if str(r["final_function"]).strip() in PHROG_CANON:
+            continue
+        cat = category_from_text(str(r["final_product"]))
+        m.at[i, "final_function"] = cat if cat != "unknown function" else "other"
+        n_normfn += 1
 
-    # ---- FIX 2: recover confident structural homologs to uncharacterised targets
+    # ---- recover confident structural homologs to uncharacterised targets
     # Many genes scored a CONFIDENT/GOOD FoldSeek hit but to an AFDB entry with an
     # empty/DUF header -> they were dumped as plain "hypothetical / no_hit", losing
     # the fact that a conserved fold (and sometimes a DUF id) exists. Relabel these
     # as structural-only: keep a DUF/other name if present, else note the homolog.
     n_struct = 0
-    # final-table FoldSeek columns are fs_*; fall back to the old foldseek_*
-    # names for backward compat with tables generated before that rename.
-    _c_conf = "fs_confidence" if "fs_confidence" in m.columns else "foldseek_confidence"
-    _c_desc = "fs_description" if "fs_description" in m.columns else "foldseek_description"
+    _c_conf, _c_desc = "fs_confidence", "fs_description"
     if _c_conf in m.columns and _c_desc in m.columns:
         for i, r in m.iterrows():
             if str(r.get("annotation_source", "")) not in ("no_hit", "no_informative_hit"):

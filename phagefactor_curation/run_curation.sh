@@ -17,6 +17,8 @@
 #   ONLY="PEV2 phiKZ"        only these phages
 #   SKIP="test1"             skip these
 #   VERBOSE=1                per-phage detail instead of one summary line
+#   PHAGEFACTOR_TAXDUMP=dir  NCBI taxdump (nodes.dmp, merged.dmp): hit domain from the taxid
+#   PHOLD_EVALUE=1e-3        Phold calls from hits at e-value <= this (0 = FFAL's calls)
 #
 # Requires: python >= 3.9 with pandas, biopython, pyyaml, openpyxl.
 set -euo pipefail
@@ -41,6 +43,8 @@ echo "=== FFAL -> phageFACTor curation ==="
 echo "  ffal output : $FFAL_OUT"
 echo "  curation    : $HERE"
 echo "  host genus  : ${DEFAULT_HOST:-<none — host boost disabled>}"
+echo "  taxdump     : ${PHAGEFACTOR_TAXDUMP:-<none — hit domains from organism names only>}"
+echo "  phold e-val : ${PHOLD_EVALUE:-1e-3}"
 echo ""
 
 host_for() {
@@ -65,8 +69,8 @@ for d in "$FFAL_OUT"/*/; do
     # curation still runs, but two of its filters are silently inert -- say so.
     case "$(head -1 "$hits1")" in
         *taxname*) : ;;
-        *) echo "hit table has no taxname column: eukaryote filter and host boost"
-           echo "      will not fire. Re-run FFAL with the taxonomy patch to enable them." ;;
+        *) echo "hit table has no taxonomy columns: host boost off, hit domains"
+           echo "      from organism names only." ;;
     esac
 
     prefix="$(basename "$pcds" _phold_per_cds_predictions.tsv)"
@@ -80,7 +84,7 @@ for d in "$FFAL_OUT"/*/; do
     # 1. FFAL hit tables -> the two CSVs step 03 reads
     "$PY" "$HERE/adapters/ffal_to_phagefactor.py" \
         --ffal-out "$d" --prefix "$prefix" --prophage "$name" \
-        --pf-out "$run" --phagefactor "$HERE" \
+        --pf-out "$run" --phagefactor "$HERE" --phold-evalue "${PHOLD_EVALUE:-1e-3}" \
         > "$run/01_bridge.log" 2>&1 || {
         echo "FAILED at the bridge step — see $run/01_bridge.log" >&2
         echo "      NOTE: any *.csv already in $d/phagefactor_curation/ are from an"  >&2

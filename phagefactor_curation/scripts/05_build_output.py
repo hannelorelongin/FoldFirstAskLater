@@ -58,12 +58,9 @@ def _strip_fragment(s):
 
 # Genome-mode passthrough writes pharokka's PRODUCT into the function field
 # (step 03 nulls phold's category for non-hypothetical genes), so final_function
-# must be remapped to one of the 9 canonical PHROG categories. The keyword map
-# and the canonical set live in lib/rules.py, next to 04's curation-side
-# FUNC_CAT_RULES so the overlap between the two is visible in one place.
+# is remapped to a canonical PHROG category (lib/rules.py).
 from rules import (
     PHROG_CANON as _PHROG_CANON,
-    CAT_KEYWORDS as _CAT_KEYWORDS,
     phrog_category as _phrog_category,
 )
 
@@ -97,21 +94,17 @@ def _bool_flag(v) -> bool:
 
 
 def _find_curation_files(curation_dir: Path):
-    # Curated files live in 04_output/curation/; also look in the parent
-    # (older 04_output/ layout) so previously-generated runs still load.
+    # Curated files live in 04_output/curation/ (or its parent folder).
     search_dirs = [curation_dir, curation_dir.parent]
     auto_path = None
-    # Prefer the combined curated_annotations.csv (all genes, one file);
-    # fall back to the legacy auto_curated.csv split for older runs.
     for d in search_dirs:
-        for name in ("curated_annotations.csv", "auto_curated.csv", "auto_curated_new.csv"):
+        for name in ("curated_annotations.csv",):
             p = d / name
             if p.exists(): auto_path = p; break
         if auto_path: break
     review_path = None
-    # review_suggested.csv is the new name; keep old names for backward compat
     for d in search_dirs:
-        for name in ("review_suggested.csv", "needs_review.csv", "needs_review_NEW.csv", "needs_review_new.csv"):
+        for name in ("review_suggested.csv",):
             p = d / name
             if p.exists():
                 try:
@@ -165,10 +158,8 @@ def _load_curated_annotations(curation_dir: Path) -> pd.DataFrame:
         # foldseek / both agree / merged / none). Only fall back to
         # "manual_review" when the reviewer typed a different name than the
         # rule engine's suggestion, or "curation_suggestion" if best_source is
-        # missing/uninformative. "phold+foldseek" is kept as a valid value for
-        # backward compat with tables generated before the both-agree/merged
-        # distinction existed.
-        VALID_SOURCES = {"phold", "foldseek", "both agree", "merged", "phold+foldseek", "no_hit", "none"}
+        # missing/uninformative.
+        VALID_SOURCES = {"phold", "foldseek", "both agree", "merged", "no_hit", "none"}
 
         def _review_source(row):
             fa = str(row.get("final_annotation", "")).strip()
@@ -241,11 +232,8 @@ def _apply_overrides(curated: pd.DataFrame, overrides_path: Path) -> pd.DataFram
 
 
 def _load_foldseek_qcov(foldseek_dir: Path) -> dict:
-    # Use FOLDSEEK_BEST_HIT from config (cluster: 3di_tokens/best_hit.csv;
-    # local: foldseek_best_hit.csv) rather than constructing the path here.
     best_hit = FOLDSEEK_BEST_HIT
     if not best_hit.exists():
-        # Fallback to legacy local path in case config doesn't define it
         best_hit = foldseek_dir / "foldseek_best_hit.csv"
     if not best_hit.exists():
         log(f"WARNING: {best_hit} not found -- qcov_frac/partial_match will be NA")
@@ -401,9 +389,8 @@ def _enrich_metadata_for_gbk(metadata: "pd.DataFrame", rich_csv: Path) -> "pd.Da
 
     # Drop any of these columns already present in `metadata` BEFORE the merge,
     # else pandas suffixes them start_x/start_y/... and build_gbk_from_metadata
-    # can't find the plain start/end/strand/gene_id_gff (the bug that silently
-    # skipped the GBK when the minimal metadata already carried coords). rich is
-    # the authoritative source for these.
+    # can't find the plain start/end/strand/gene_id_gff. rich is the
+    # authoritative source for these.
     meta_clean = metadata.drop(columns=[c for c in cols if c in metadata.columns],
                                errors="ignore")
     enriched = meta_clean.merge(rich_sub, how="left",

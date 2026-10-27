@@ -45,11 +45,17 @@ VERBOSE=1              bash phagefactor_curation/run_curation.sh out/
 `HOST_MAP=hosts.tsv` gives a per-phage host genus (two columns: phage, genus) when
 one dataset mixes hosts.
 
+`PHOLD_EVALUE=1e-3` (default) bases the Phold calls on hits with e-value ≤ 1e-3,
+Phold's own threshold, independently of FFAL's `--evalue` (`0` keeps FFAL's calls).
+It reads `phold_annots.tsv` from the FFAL database (or `$PHOLD_ANNOTS`).
+
+`PHAGEFACTOR_TAXDUMP=<dir>` (NCBI `nodes.dmp` + `merged.dmp`) gives each hit its
+domain from the taxid; without it the domain comes from organism-name keywords.
+
 ## Requirements
 
 Python ≥ 3.9 with `pandas`, `biopython`, `pyyaml`, `openpyxl`. No FoldSeek, no
-Pharokka, no GPU, no databases — the search already happened in FFAL. Runs in
-seconds per phage on a laptop.
+Pharokka, no GPU: the search already happened in FFAL. Runs in seconds per phage.
 
 ## What it does, in order
 

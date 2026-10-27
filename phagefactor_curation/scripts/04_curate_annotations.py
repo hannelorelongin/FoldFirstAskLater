@@ -14,7 +14,7 @@ Decision tree per hypothetical gene:
   strong/partial match, both inf           Auto-merge        No
   complementary (cat matches FS desc)      Auto-merge        No
   phold_only (PHold inf, FS uninf)         Use PHold         No
-  foldseek_only (FS inf, PHold uninf)      Use FoldSeek      No
+  foldseek_only (FS inf, PHold uninf)      Use FoldSeek (GOOD+) No
   different (both inf, diverge)            Flag              Yes
   both_uninformative                       "hypothetical"    No
   ---------------------------------------------------------------------
@@ -25,15 +25,12 @@ states which rule fired and why. You review these in Excel, adjust if
 needed, then fill final_annotation.
 
 Writes:
-  04_curation/auto_curated.csv    -> confidently decided genes (no review needed)
-  04_curation/needs_review.csv    -> flagged genes for manual review
-      Columns include: ...(comparison cols)..., curation_suggestion,
-                       curation_explanation, final_annotation  [<- fill this in Excel]
+  04_output/curation/curated_annotations.csv -> all genes, with needs_review,
+      curation_suggestion, curation_explanation and final_annotation.
+  Step 05 then writes review_suggested.csv (flagged genes) and the final table.
 
-After manual review:
-  -> Save needs_review.csv with final_annotation column filled
-  -> Copy it back as 04_curation/needs_review.csv
-  -> Run scripts/05_build_output.py
+After manual review: edit final_annotation in review_suggested.csv, then rerun
+scripts/05_build_output.py.
 
 Usage:
   cd phagefactor/
@@ -56,8 +53,11 @@ if _LIB_DIR.is_dir():
 # Single source of truth for description vocabulary (see lexicon.py).
 from lexicon import (
     GENERIC_STRUCTURAL_PRODUCTS as _GENERIC_STRUCTURAL_TERMS,
-    DEFENSE_DESC as _DEFENSE_DESC_RE,
+    DEFENSE_ANY as _DEFENSE_ANY,
     PDB_TITLE as _FS_PDB_TITLE_RE,
+    EUKARYOTIC_DESC as _EUKARYOTIC_DESC_RE,
+    TA_FAMILY as _TA_FAMILY,
+    DOMAIN_PARTNERS as _DOMAIN_PARTNERS,
 )
 
 from config import (
@@ -66,10 +66,15 @@ from config import (
     PHOLD_TRUSTED_CONF, PHOLD_WEAK_CONF,
     HOST_GENUS,
 )
+from config import SUBDB_CLOSE_MIN_FIDENT
 from utils import log, section, clean_str, is_informative, tokenize, fuzzy_score
-# relevant_domain + RELEVANT_DOMAINS moved into lexicon.py section G, the
-# positive counterpart to the promiscuous-fold list. relevant_folds.py is gone.
+# relevant_domain: lexicon.py section G, the positive counterpart to the
+# promiscuous-fold list.
 from lexicon import relevant_domain
+from rules import clean_name as _rules_clean_name
+from lexicon import (is_informative_desc, classify as _classify, PDB_TRAILING_QUAL as _PDB_TRAILING_QUAL,
+                     extract_pdb_description as _extract_pdb_description,
+                     TAG_DOMAIN_SUFFIX, TAG_GENE_LABEL, TAG_ORF_STYLE, TAG_WRAPPER)
 from lexicon import (
     COMPLEMENTARY_CATEGORY_MAP,
     GENERIC_WORDS,
@@ -80,6 +85,10 @@ from lexicon import (
     EUKA_RESCUE as _EUKA_RESCUE_RE,
 )
 from foldseek_scoring import _phage_boost_factor  # keep-foldseek: confident-fs-relevant gate
+# _is_pdb_title plus variant/condition tails ('... variant Delta+PHS L36R at
+# cryogenic temperature', 'cA4-bound Cami1 in complex with 70S ribosome').
+# Case-5 gates keep calling _is_pdb_title.
+from foldseek_scoring import _reads_like_title
 
 try:
     import pandas as pd
@@ -171,9 +180,7 @@ def _parse_defensefinder_name(tophit: str) -> str:
 # POST-SELECTION ANNOTATION HELPERS
 # -----------------------------------------------------------------------------
 
-# _DEFENSE_DESC_RE is now defined ONCE in lexicon.py as DEFENSE_DESC,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
+# _DEFENSE_ANY is lexicon.DEFENSE_ANY (defense systems + toxin-antitoxin), imported above.
 
 
 def _desc_is_defense(desc: str) -> bool:
@@ -182,7 +189,7 @@ def _desc_is_defense(desc: str) -> bool:
     force review: only when the CHOSEN phold/FS call is itself defense -- an
     incidental TA entry in a non-chosen top-3 slot must not flag an otherwise
     agreeing gene (e.g. CEDLNMDB_00945, a transcriptional regulator)."""
-    return bool(desc) and isinstance(desc, str) and bool(_DEFENSE_DESC_RE.search(desc))
+    return bool(desc) and isinstance(desc, str) and bool(_DEFENSE_ANY.search(desc))
 
 
 def _strip_fragment(desc: str) -> str:
@@ -200,8 +207,7 @@ def _strip_fragment(desc: str) -> str:
 #   pattern_in_top3 None -> unconditional rename
 #   replacement     None -> use the matched top3 entry verbatim
 #                   str  -> literal, or "{match}" template, or a \1 backreference
-# UPGRADE_RULES and FUNC_CAT_RULES now live in lib/rules.py -- ordered rules,
-# kept apart from lexicon.py's vocabulary because FIRST MATCH WINS here.
+# UPGRADE_RULES live in lib/rules.py (ordered rules: FIRST MATCH WINS).
 from rules import UPGRADE_RULES as _UPGRADE_RULES
 
 
@@ -249,30 +255,22 @@ def _apply_final_upgrades(desc: str, top3_str: str) -> str:
 
 
 # Map description text -> function category for proteins that have no PHold call
-from rules import FUNC_CAT_RULES as _FUNC_CAT_RULES
+from rules import category_from_text as _category_from_text
 
 # FoldSeek descriptions carrying no real function beyond "some protein". Used to
 # decide when a specialized sub-DB hit (T6SS/T4SS/VFDB/CARD) should win over a
 # CONFIDENT-but-generic FoldSeek call even at LOW phold confidence (TagO, IcmN).
 # Deliberately narrow so SPECIFIC FS calls (e.g. vanT -> "Alanine racemase") do
 # NOT match and keep winning.
-# _FS_GENERIC is now defined ONCE in lexicon.py as FS_GENERIC,
-# imported at the top of this file.
 
 
 def _infer_function_cat(desc: str, current_cat: str) -> str:
-    """
-    Infer a function category from the annotation description when the current
-    category is unknown.  Trusts existing non-unknown PHold categories.
-    """
+    """Category from the description when the current category is unknown.
+    A known PHold category is kept."""
     if current_cat and current_cat.lower() not in ("unknown function", "na", "nan"):
         return current_cat
-    if not desc or not isinstance(desc, str):
-        return current_cat or "unknown function"
-    for pattern, cat in _FUNC_CAT_RULES:
-        if pattern.search(desc):
-            return cat
-    return current_cat or "unknown function"
+    cat = _category_from_text(desc)
+    return cat if cat != "unknown function" else (current_cat or "unknown function")
 
 
 # -----------------------------------------------------------------------------
@@ -297,7 +295,9 @@ def _infer_function_cat(desc: str, current_cat: str) -> str:
 #   weak-fs-guard           borderline/generic FS can't override informative phold
 #   transaldolase-keep      keep transaldolase over FS's panB fold-alike
 #   suppress-fs-wrapper     bare "(pro)phage protein" FS hit carries no signal
+#   top3-majority           >=2 FS top-3 hits name phold's function, as confidently as the best hit
 #   top3-corroboration      an FS top-3 entry (not just top-1) corroborates phold
+#   structural-call         phold's generic structural call vs an FS name of another category
 #
 # keep-foldseek   -- FoldSeek's call wins outright, no merge, no review
 #   confident-fs-relevant   confident + phage-relevant FS beats a weak phold guess
@@ -328,28 +328,22 @@ def _infer_function_cat(desc: str, current_cat: str) -> str:
 # >=2 FS top-3 entries mutually share a specific (non-generic) token. Merge as
 # "<phold generic term> (<FS specific name>)", attribute phold+foldseek,
 # classify concordant (no review flag).
-# _GENERIC_STRUCTURAL_TERMS is now defined ONCE in lexicon.py as STRUCTURAL_TERMS,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 # Words to additionally ignore when looking for FS top-3 internal concordance:
 # top-3 "specific names" are frequently short bare IDs ("D", "GP46", "gp45")
 # that tokenize()'s len>2 filter would drop as noise -- so we build our own
 # lighter token set here rather than reusing tokenize() directly.
-# (Identifiers below keep their original "_rule_a_*" names -- this helper
-# predates the functional-slug renaming and the symbol names aren't worth the
-# call-site churn to rename; the current rule is [merge: fs-specificity-upgrade].)
-_RULE_A_DROP_WORDS = GENERIC_WORDS | {"phage", "prophage", "homolog", "to", "of"}
+_SPEC_DROP_WORDS = GENERIC_WORDS | {"phage", "prophage", "homolog", "to", "of"}
 
 
-def _rule_a_top3_internal_id(desc: str) -> set:
+def _top3_id_tokens(desc: str) -> set:
     """Tokenise an FS top-3 entry for fs-specificity-upgrade concordance
     checking, keeping short specific identifiers (e.g. 'D', 'GP46') that
     tokenize() would drop."""
     if not desc or not isinstance(desc, str):
         return set()
     raw = set(re.findall(r"[a-zA-Z0-9]+", desc.lower()))
-    return {t for t in raw if t not in _RULE_A_DROP_WORDS and len(t) > 1}
+    return {t for t in raw if t not in _SPEC_DROP_WORDS and len(t) > 1}
 
 
 def _fs_top3_concordant_specific(top3_str: str):
@@ -362,7 +356,7 @@ def _fs_top3_concordant_specific(top3_str: str):
                if t.strip() and t.strip() != "NA"]
     if len(entries) < 2:
         return None
-    tok = [_rule_a_top3_internal_id(e) for e in entries]
+    tok = [_top3_id_tokens(e) for e in entries]
     for i in range(len(entries)):
         if not tok[i]:
             continue
@@ -372,6 +366,52 @@ def _fs_top3_concordant_specific(top3_str: str):
     return None
 
 
+# ---- [review: head-tail-conflict] helpers -----------------------------------
+# Which part of the virion a name places the protein in. Neck proteins (connector,
+# adaptor, head closure, tail terminator/completion) sit between head and tail, so
+# they never conflict with either. The portal counts as head: it is a capsid vertex,
+# so 'baseplate protein (portal protein)' is a conflict.
+_NECK_PART = re.compile(r"connector|adapt[oe]r|head[- ]?(closure|completion)|\bneck\b|collar|"
+                        r"terminator|tail[- ]completion|stopper|head[- ]tail|joining", re.I)
+_TAIL_PART = re.compile(r"\btail|fib(er|re)|baseplate|tape[- ]measure|sheath|\btube\b|spike|\bhub\b|wedge", re.I)
+_HEAD_PART = re.compile(r"capsid|\bhead\b|scaffold|prohead|decoration|portal", re.I)
+
+
+def _virion_part(desc) -> str:
+    """'head', 'tail', 'neck' or '' for a product name."""
+    d = str(desc or "")
+    if _NECK_PART.search(d):
+        return "neck"
+    if _TAIL_PART.search(d):
+        return "tail"
+    if _HEAD_PART.search(d):
+        return "head"
+    return ""
+
+
+def _head_tail_conflict(p_desc, final_desc):
+    """The FoldSeek-side name when the final call puts a PHold head protein on
+    the tail (or the reverse), else None. Covers a merge 'PHold (FS)' /
+    'PHold / FS' and a plain FS replacement."""
+    p = clean_str(p_desc)
+    if not is_informative(p) or _virion_part(p) not in ("head", "tail"):
+        return None
+    f = clean_str(final_desc)
+    if f.lower() == p.lower():
+        return None
+    fs = f[len(p):].strip(" ()/") if f.lower().startswith(p.lower()) else f
+    if fs and _virion_part(fs) in ("head", "tail") and _virion_part(fs) != _virion_part(p):
+        return fs
+    return None
+
+
+def _flag(row, col) -> bool:
+    """A True/False column read NaN-safely: an empty cell (e.g. foldseek_same_host
+    when no host genus is configured) is False, not bool(NaN) == True."""
+    v = row.get(col, False)
+    return bool(v) if v is not None and not (isinstance(v, float) and v != v) else False
+
+
 # ---- [merge: euka-substitute] helpers --------------------------------------
 # A eukaryote-kingdom FS best hit is generally a convergent-fold false positive
 # in a prophage and should not be prioritised. Prefer an informative bacterial/
@@ -379,8 +419,6 @@ def _fs_top3_concordant_specific(top3_str: str):
 # HOMOLOGOUS but biologically-real defence/immunity proteins (Sir2, TIR, STING,
 # cGAS, viperin, Argonaute, gasdermin, SamHD1, Thoeris) -- those are kept when no
 # prokaryotic top-3 hit is available, rather than discarded.
-# _EUKA_RESCUE_RE is now defined ONCE in lexicon.py as EUKA_RESCUE,
-# imported at the top of this file.
 
 
 def _is_rescued_euka(desc: str) -> bool:
@@ -412,8 +450,6 @@ def _first_prokaryotic_top3(top3_str: str, top3_kingdoms_str: str):
 # qualifier survives in front of it (e.g. "baseplate phage protein" --
 # "baseplate" IS informative), the rule must NOT fire; the qualifier has to
 # remain visible, so it falls through to normal divergent handling instead.
-# _PHAGE_WRAPPER_ONLY_RE is now defined ONCE in lexicon.py as PHAGE_WRAPPER_ONLY,
-# imported at the top of this file.
 
 
 # Broader "FS hit carries no usable function" detector (superset of the wrapper):
@@ -421,17 +457,12 @@ def _first_prokaryotic_top3(top3_str: str, top3_kingdoms_str: str):
 # bare ATP-binding/ATPase, "Prophage X protein NN", uncharacterised. Used to keep
 # phold (no review) when FoldSeek only returns one of these. Carefully excludes
 # specific phage names (tail/portal/baseplate/holin/terminase/capsid/connector/fiber).
-# _FS_GENERIC_BROAD is now defined ONCE in lexicon.py as FS_GENERIC_BROAD,
-# imported at the top of this file.
 
 
 # PDB/structure-title detector: pdb100 descriptions are sometimes the full paper/
 # structure title (a sentence) rather than a gene name -- carries no protein
-# identity. E.g. LDGKBLMO_01121's GOOD hit "Biophysical and cellular
-# characterisation of a junctional epitope antibody that locks IL-6 and gp80...".
-# _FS_PDB_TITLE_RE is now defined ONCE in lexicon.py as PDB_TITLE,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
+# identity ("Biophysical and cellular characterisation of a junctional epitope
+# antibody that locks IL-6 and gp80...").
 
 
 def _is_pdb_title(desc: str) -> bool:
@@ -512,7 +543,6 @@ def _top3_corroborates(p_desc: str, top3_str: str):
 # membership match against a small, pure generic-descriptor set -- it can
 # never match a combined "X / generic-Y" string (which contains "/" and extra
 # text), so it cannot double-fire with _UPGRADE_RULES.
-# _GENERIC_DESCRIPTORS is now defined ONCE in lexicon.py as GENERIC_DESCRIPTORS.
 
 
 def _generic_vs_specific(p_desc: str, fs_desc: str):
@@ -545,6 +575,130 @@ def _generic_vs_specific(p_desc: str, fs_desc: str):
 # ANNOTATION MERGING
 # -----------------------------------------------------------------------------
 
+# ---- NetFlaX helpers -------------------------------------------------------
+from rules import TA_CATEGORY as _TA_CATEGORY   # one definition (rules.py)
+from rules import same_function as _same_function
+from config import FOLDSEEK_TOP3
+from foldseek_scoring import _compute_fs_confidence, _TIER_RANK
+
+# FoldSeek top-3 hits per gene with their own e-value and score (loaded in main)
+_TOP3_HITS: dict = {}
+
+
+def _load_top3_hits():
+    if not Path(FOLDSEEK_TOP3).is_file():
+        return
+    t = pd.read_csv(str(FOLDSEEK_TOP3), dtype=str).fillna("")
+    for gene, g in t.groupby("gene", sort=False):
+        _TOP3_HITS[gene] = [(r["description"], r.get("evalue", ""), r.get("score", ""))
+                            for _, r in g.iterrows()]
+
+
+def _top3_majority_for_phold(locus_tag: str, p_desc: str, fs_conf: str):
+    """[keep-phold: top3-majority] >=2 FoldSeek top-3 hits name PHold's function
+    and are as confident as the best hit: return the best of those names."""
+    hits = _TOP3_HITS.get(locus_tag, [])
+    descs = [d for d, _, _ in hits]
+    corro = [(d, e, sc) for d, e, sc in hits
+             if d and (_same_function(_strip_fragment(d), p_desc) or _top3_corroborates(p_desc, d))]
+    if len(corro) < 2:
+        return None
+    best_rank = _TIER_RANK.get(str(fs_conf).upper(), 0)
+    tiers = [_TIER_RANK.get(_compute_fs_confidence(e, sc, descs, True), 0) for _, e, sc in corro]
+    if max(tiers) < best_rank:
+        return None
+    return p_desc
+
+
+def _netflax_role(name: str) -> str:
+    """'toxin' / 'antitoxin' / '' from a NetFlaX sub-DB name (any format)."""
+    m = re.search(r'\b(antitoxin|toxin)\b', str(name), re.I)
+    return m.group(1).lower() if m else ""
+
+
+def _netflax_name(name: str) -> str:
+    """Canonical NetFlaX product name: role only, no partner accession."""
+    role = _netflax_role(re.sub(r'\(partner:[^)]*\)', '', str(name)))
+    return (f"NetFlaX-predicted {role}" if role
+            else "NetFlaX-predicted toxin-antitoxin system protein")
+
+
+_LOW_INFO_TAGS = {TAG_DOMAIN_SUFFIX, TAG_GENE_LABEL, TAG_ORF_STYLE, TAG_WRAPPER}
+
+
+def _is_low_information_name(desc: str) -> bool:
+    """A name that says WHICH BOX the protein falls in, not WHAT IT DOES:
+    lexicon tier 1 (domain/family/repeat/motif suffix, gene label, ORF style,
+    wrapper) or a broad FoldSeek wrapper -- AND no characterised domain (PIN, HNH, ...)
+    Generic-but-real descriptors ('Lipoprotein', 'DNA-binding protein',
+    'Secreted protein') are deliberately NOT low-information here.
+    AND no function category can be inferred from the name.
+    The last two keep 'MarR family transcriptional regulator' or 'PIN
+    domain-containing protein' (same shape, real function) informative."""
+    if not desc or not isinstance(desc, str):
+        return False
+    d = clean_str(desc)
+    shaped = bool(_classify(d)[1] & _LOW_INFO_TAGS) or _fs_uninformative(d)
+    if not shaped or relevant_domain(d) is not None:
+        return False
+    # 'Terminase large subunit gp17-like C-terminal domain-containing protein'
+    # or 'Arc-like DNA binding domain-containing protein' keep their name.
+    return _category_from_text(d) == "unknown function"
+
+
+_VIRION_MODULES = {
+    "head": re.compile(r'\b(head|capsid|portal|decoration|scaffold\w*)\b', re.I),
+    "tail": re.compile(r'\b(tail|baseplate|fib(?:er|re)|sheath|tape.measure)\b', re.I),
+}
+
+
+def _virion_module_majority(fs_desc: str, top3) -> str:
+    """When the FoldSeek best hit names one virion module (head) but >= 2 top-3
+    hits name the other (tail), return the first top-3 hit of the majority module
+    ('Head decoration protein' | 'Phage tail protein' | 'Tail fiber protein' ->
+    'Phage tail protein'); otherwise fs_desc unchanged. Only used when phold's
+    call is a generic structural term."""
+    hits = [t.strip() for t in str(top3).split("|") if t.strip() and t.strip() != "NA"]
+    own = [m for m, rx in _VIRION_MODULES.items() if rx.search(str(fs_desc))]
+    if len(own) != 1:
+        return fs_desc
+    other = "tail" if own[0] == "head" else "head"
+    side = [h for h in hits
+            if _VIRION_MODULES[other].search(h) and not _VIRION_MODULES[own[0]].search(h)]
+    return side[0] if len(side) >= 2 else fs_desc
+
+
+def _fs_names_a_function(desc: str) -> bool:
+    """A FoldSeek description that names WHAT THE PROTEIN IS: informative, not
+    a title/wrapper, not a narrow-generic FS phrase, not low-information."""
+    if not is_informative(desc) or _fs_uninformative(desc):
+        return False
+    d = clean_str(desc)
+    if _FS_GENERIC.search(d) or _reads_like_title(d):
+        return False
+    # generic-but-real ('Lipoprotein', 'Secreted protein'): fine as a last-resort
+    # final name, but never enough to beat a specific call
+    if d.lower() in _GENERIC_DESCRIPTORS:
+        return False
+    return not _is_low_information_name(d)
+
+
+def _title_core(desc: str) -> str:
+    """Protein name buried in a structure title: drop a 'Crystal structure of'
+    prefix, a ligand prefix ('cA4-bound ...') and a trailing qualifier ('... in
+    complex with 70S ribosome'). 'cA4-bound Cami1 in complex with 70S ribosome'
+    -> 'Cami1'. Returns '' when nothing usable is left."""
+    d = clean_str(desc)
+    d = _extract_pdb_description(d) or d
+    d = _PDB_TRAILING_QUAL.sub("", d)
+    d = re.sub(r"^(?:[\w+-]+[-\s](?:bound|free|liganded|apo)\s+)+", "", d, flags=re.I).strip(" ,;:")
+    return d if (d and is_informative_desc(d) and not _reads_like_title(d)) else ""
+
+
+_CELL_WALL_BINDING = re.compile(r"\b(?:cell[ -]?wall|peptidoglycan|carbohydrate|choline|"
+                                r"lysm|sh3b?)\b[^,;]{0,30}binding", re.I)
+
+
 def merge_annotations(row: pd.Series) -> tuple:
     """
     Apply the curation decision tree for one gene.
@@ -563,7 +717,7 @@ def merge_annotations(row: pd.Series) -> tuple:
     p_cat        = clean_str(row.get("phold_function_cat", "NA"))
     p_conf       = str(row.get("phold_confidence", "none")).lower()
     p_evalue     = row.get("phold_evalue")
-    p_inf        = bool(row.get("phold_inf", False))
+    p_inf        = _flag(row, "phold_inf")
     p_tophit     = clean_str(row.get("phold_tophit", "NA"))
     p_method     = clean_str(row.get("phold_method", "NA"))
     sub_source   = clean_str(row.get("subdb_source", "NA")).lower()
@@ -579,29 +733,28 @@ def merge_annotations(row: pd.Series) -> tuple:
     # placeholder string or a regex on the raw tophit ID) to tell us which sub-DB
     # phold actually flagged this gene against -- it survives the NaN-cleaning
     # that can blank out phold_product for DefenseFinder hits.
-    #
-    # NOTE: this supersedes the old _parse_defensefinder_name()-based approach,
-    # which regex-parsed raw DefenseFinder tophit ID strings (fragile, DF-only).
-    # Reading the structured sub_db_tophits table directly is more robust and
-    # generalises to all five sub-DBs uniformly.
     subdb_hit = is_informative(sub_name) and sub_source == p_phrog_l
+    netflax_hit = subdb_hit and sub_source == "netflax"
     if subdb_hit:
         p_desc = sub_name
         p_inf  = True   # it IS informative: a named, structurally-identified protein
-        if sub_source in ("defensefinder", "netflax", "acr"):
+        if sub_source in ("defensefinder", "acr"):
             # PHold maps these to the generic "moron, auxiliary metabolic gene and
             # host takeover" PHROG category; override to "defense", the
-            # biologically correct category for these toxin/antitoxin & immune-
-            # system protein families.
+            # biologically correct category for these immune-system families.
             p_cat = "defense"
+        elif netflax_hit:
+            # NetFlaX = PREDICTED toxin-antitoxin pairs. Not an HMM-validated
+            # defense system: it keeps PHold's TA category and is resolved by
+            # its own gate below (never by defense-priority / subdb-priority).
+            p_desc = _netflax_name(sub_name)
+            p_cat  = _TA_CATEGORY
     elif p_phrog_l == "defensefinder" and (
         p_desc.lower() in ("defensefinder protein", "defense protein")
         or "defensefinder" in p_method.lower()
     ):
-        # Backward-compat fallback for comparison_per_gene.csv files generated
-        # before the subdb_name join existed (no subdb_source/subdb_name columns,
-        # or sub_db_tophits/*.tsv was missing/empty for this run). Keeps the
-        # older regex-based DefenseFinder ID parsing as a safety net.
+        # No subdb_source/subdb_name for this gene (sub_db_tophits missing or
+        # empty): parse the DefenseFinder system name from the tophit ID.
         df_name = _parse_defensefinder_name(p_tophit)
         if df_name:
             p_desc = df_name
@@ -613,21 +766,27 @@ def merge_annotations(row: pd.Series) -> tuple:
     # foldseek_inf from 03_compare already has the WEAK filter applied (03_compare
     # sets fs_inf=False for WEAK/NO_HIT confidence hits before writing the CSV).
     # We keep the raw flag for re-routing logic below.
-    _fs_inf_raw  = bool(row.get("foldseek_inf", False))
+    _fs_inf_raw  = _flag(row, "foldseek_inf")
     # Safety net: WEAK/NO_HIT confidence hits must not drive annotation decisions
-    # even if 03_compare classified them as informative (e.g. if CSV was generated
-    # by an older version without the WEAK filter).
-    fs_inf       = _fs_inf_raw and (fs_conf not in ("WEAK", "NO_HIT"))
+    # even if 03_compare classified them as informative, and the description is
+    # re-checked against the current lexicon so a step-04-only rerun picks up
+    # lexicon edits.
+    fs_inf       = (_fs_inf_raw and (fs_conf not in ("WEAK", "NO_HIT"))
+                    and is_informative_desc(fs_desc))
     fs_evalue    = row.get("foldseek_evalue")
     fs_score     = row.get("foldseek_score")
     fs_pident    = row.get("foldseek_pident")
     fz_score     = row.get("fuzzy_score")
     top3         = clean_str(row.get("foldseek_top3", "NA"))
-    defense_flag   = bool(row.get("foldseek_defense", False))
+    defense_flag   = _flag(row, "foldseek_defense")
     fs_taxname     = clean_str(row.get("foldseek_taxname", "NA"))
     fs_db          = clean_str(row.get("foldseek_db", "NA"))
-    fs_promiscuous = bool(row.get("foldseek_promiscuous", False))
-    fs_euka_desc   = bool(row.get("foldseek_euka_desc", False))
+    fs_promiscuous = _flag(row, "foldseek_promiscuous")
+    # Flag from step 02, OR the current lexicon (so a keyword added since the
+    # FoldSeek post-processing ran takes effect on a 04-only rerun).
+    fs_euka_desc   = (_flag(row, "foldseek_euka_desc")
+                      or (bool(_EUKARYOTIC_DESC_RE.search(fs_desc))
+                          and not _EUKA_RESCUE_RE.search(fs_desc)))
     # Taxonomy-grounded eukaryote-only signal (best_hit_kingdom=="Eukaryote" with
     # no Bacteria/Archaea/Virus support in the top-3 -- the same condition
     # 03_compare_annotations.py uses to demote the confidence tier). This is
@@ -637,7 +796,7 @@ def merge_annotations(row: pd.Series) -> tuple:
     # gates below -- otherwise a hit demoted from GOOD/CONFIDENT down to
     # BORDERLINE purely because every top-3 hit is human/eukaryotic can still
     # sail through as auto_foldseek_only untouched.
-    fs_euka_kingdom = bool(row.get("foldseek_euka_kingdom", False))
+    fs_euka_kingdom = _flag(row, "foldseek_euka_kingdom")
 
     # A defense call is never itself a reason to send a gene to review (Tan): the
     # defense annotation + flag are kept in the final table, but review_suggested
@@ -654,7 +813,7 @@ def merge_annotations(row: pd.Series) -> tuple:
     # Gate 15: WEAK/NO_HIT confidence means 03_compare may have set an agreement
     # that relied on an unreliable FS hit.  Re-route to prevent Case 4 from
     # auto-accepting poor structural evidence.
-    # (Primary filtering is in 03_compare; this is a safety net for old CSVs.)
+    # (03_compare filters these too.)
     if _fs_inf_raw and not fs_inf:
         # FS was informative at parse time but confidence filter demoted it
         if agreement == "foldseek_only":
@@ -673,6 +832,79 @@ def merge_annotations(row: pd.Series) -> tuple:
         " [DEFENSE SYSTEM: check DefenseFinder/PADLOC for exact protein name]"
         if defense_flag else ""
     )
+
+    # -- Specialised sub-DB gate: NetFlaX / VFDB / CARD (any agreement class) --
+    # These sub-DBs are reference collections (predicted TA pairs; virulence
+    # factors; resistance genes), not HMM-validated families. A PHold hit to
+    # one of them is only as good as its identity to the entry (e.g. a
+    # 30%-identity "NetFlaX antitoxin" vs a CONFIDENT site-specific integrase).
+    #
+    # "close"  = phold_fident >= curate.subdb_close_min_fident (default 0.40).
+    #            phold_fident is the fraction of identical residues in PHold's
+    #            alignment of this protein to the sub-DB entry (0-1).
+    # "remote" = phold_fident below that (or missing).
+    # FoldSeek "names a function" = _fs_names_a_function (not generic, not a
+    # title, not a low-information domain/family label, not a location).
+    #
+    #   FS CONFIDENT + names a function, sub-DB remote
+    #       -> FoldSeek name                  [keep-foldseek: subdb-yield]
+    #   NetFlaX, FS GOOD/CONFIDENT + names a function (close, or FS only GOOD)
+    #       -> "<FS name> (NetFlaX-predicted <role>)"   [merge: ta-functionalize]
+    #   otherwise
+    #       -> sub-DB name (VFDB/CARD: subdb-priority below; NetFlaX: here)
+    #                                          [keep-phold: subdb-priority]
+    if subdb_hit and sub_source in ("netflax", "vfdb", "card"):
+        _sd_fid   = row.get("phold_fident")
+        _sd_fid   = float(_sd_fid) if _is_valid_float(_sd_fid) else float("nan")
+        _sd_close = _sd_fid == _sd_fid and _sd_fid >= SUBDB_CLOSE_MIN_FIDENT
+        _sd_ev    = (f"{sub_source} call '{p_desc}' (identity={_sd_fid:.2f}"
+                     + (f", evalue={p_evalue:.1e}" if _is_valid_float(p_evalue) else "")
+                     + ")")
+        _fs_ev    = (f"FoldSeek '{fs_desc}' [{fs_conf}"
+                     + (f", evalue={fs_evalue:.1e}" if _is_valid_float(fs_evalue) else "")
+                     + (f", score={fs_score:.0f}" if _is_valid_float(fs_score) else "")
+                     + "]")
+        # a eukaryotic best hit never replaces a sub-DB call, even with bacterial
+        # top-3 support ('Late embryogenesis abundant protein Lea14-A', Gossypium)
+        _sd_euka_best = str(row.get("best_hit_kingdom", "")).strip().lower() == "eukaryote"
+        _fs_usable = (fs_inf and fs_conf in ("CONFIDENT", "GOOD")
+                      and not (fs_promiscuous or fs_euka_desc or fs_euka_kingdom or _sd_euka_best)
+                      and _fs_names_a_function(fs_desc))
+        if _fs_usable:
+            fs_name = _apply_final_upgrades(fs_desc, top3)
+            # Only when the two calls actually conflict: an agreeing FoldSeek hit
+            # (strong / partial / complementary) is handled by Cases 1-3.
+            if fs_conf == "CONFIDENT" and not _sd_close and agreement == "different":
+                _cat = _infer_function_cat(fs_name, "unknown function")
+                if _cat == "unknown function" and is_informative(p_cat):
+                    _cat = p_cat          # e.g. a VFDB transporter stays a moron
+                return (
+                    fs_name, _cat,
+                    "foldseek", "auto_fs_over_weak_phold", False, fs_name,
+                    f"Confident, specific {_fs_ev} kept over a remote {_sd_ev} "
+                    f"(< {SUBDB_CLOSE_MIN_FIDENT:.2f} identity to the reference entry). "
+                    f"[keep-foldseek: subdb-yield]{_defense_note}",
+                )
+            if netflax_hit:
+                _role = _netflax_role(p_desc) or "toxin-antitoxin system protein"
+                merged = (fs_name if re.search(r'\b(anti)?toxin\b', fs_name, re.I)
+                          else f"{fs_name} (NetFlaX-predicted {_role})")
+                _cat = _infer_function_cat(fs_name, "unknown function")
+                return (
+                    merged, _cat if _cat != "unknown function" else _TA_CATEGORY,
+                    "merged", "auto_merge_TA_functionalised", False, merged,
+                    f"{_sd_ev} gives the role, {_fs_ev} names the protein; both kept. "
+                    f"[merge: ta-functionalize]{_defense_note}",
+                )
+        if netflax_hit:
+            _why = ("no informative FoldSeek hit" if not (fs_inf and is_informative(fs_desc))
+                    else f"{_fs_ev} is generic, weak or a fold-level match")
+            return (
+                p_desc, _TA_CATEGORY, "phold", "auto_phold_over_weak_fs", False, p_desc,
+                f"{_sd_ev} kept: {_why}. [keep-phold: subdb-priority]{_defense_note}",
+            )
+        # VFDB / CARD close, or FoldSeek not decisive -> unchanged downstream
+        # logic (Case 1-5; subdb-priority in Case 5).
 
     # -- Case 1: strong or partial match -------------------------------------
     if agreement in ("strong", "partial"):
@@ -719,10 +951,15 @@ def merge_annotations(row: pd.Series) -> tuple:
         # the categories are complementary (e.g. PHold "ParA-like partition
         # protein" vs FS "Sporulation initiation inhibitor Soj" -> keep ParA).
         _ge = _generic_vs_specific(p_desc, fs_desc)
-        if _ge and _ge[1] == "foldseek":
-            best_desc = _apply_final_upgrades(_ge[0], top3)
+        # a BORDERLINE FoldSeek name does not replace even a generic phold call
+        if _ge and _ge[1] == "foldseek" and (fs_conf in ("CONFIDENT", "GOOD") or not is_informative(p_desc)):
+            _fs_pick = _virion_module_majority(_ge[0], top3)
+            best_desc = _apply_final_upgrades(_fs_pick, top3)
             note_src  = (f"PHold product='{p_desc}' is generic; preferring the "
-                         f"specific FoldSeek call '{_ge[0]}' (cat='{p_cat}').")
+                         f"specific FoldSeek call '{_fs_pick}' (cat='{p_cat}').")
+            if _fs_pick != _ge[0]:
+                note_src += (f" Best hit '{_ge[0]}' names another virion module than "
+                             f"most of the top-3. [specificity: module-majority]")
         else:
             best_desc = p_desc if is_informative(p_desc) else fs_desc
             best_desc = _apply_final_upgrades(best_desc, top3)
@@ -764,44 +1001,67 @@ def merge_annotations(row: pd.Series) -> tuple:
     if agreement == "foldseek_only":
         ev_str  = f"; evalue={fs_evalue:.2e}" if _is_valid_float(fs_evalue) else ""
         sc_str  = f"; score={fs_score:.0f}" if _is_valid_float(fs_score) else ""
-        pid_str = f"; pident={fs_pident:.1f}%" if _is_valid_float(fs_pident) else ""
+        # FoldSeek fident is a 0-1 fraction; print it as a percentage
+        pid_str = (f"; pident={(float(fs_pident) * 100 if float(fs_pident) <= 1 else float(fs_pident)):.1f}%"
+                   if _is_valid_float(fs_pident) else "")
         best_desc = _apply_final_upgrades(fs_desc, top3)
         best_cat  = _infer_function_cat(best_desc, "unknown function")
 
-        # A promiscuous-fold / eukaryotic FoldSeek hit that is BORDERLINE
-        # and the only evidence is too weak to even send to review -- it's a fold-level
-        # false positive (beta-lactamase/TLD, BCL-6/ankyrin). Treat as no_informative_hit
-        # (no flag), unless it's a defense hit. A CONFIDENT promiscuous/euka hit still
-        # goes to review below (worth a look). Plain (non-promiscuous) borderline hits are
-        # left untouched -> still auto-annotated, so this does NOT over-demote.
-        # fs_euka_kingdom (taxonomy-based, from best_hit_kingdom) is included
-        # alongside fs_euka_desc (description-keyword fallback) so a hit that
-        # got demoted to BORDERLINE purely because every top-3 hit is
-        # Eukaryote/human is caught even when its description is a generic
-        # gene symbol with no eukaryote-specific keyword.
-        if (fs_promiscuous or fs_euka_desc or fs_euka_kingdom) and fs_conf == "BORDERLINE" and not defense_flag:
+        # [fs-only: title-fallback] the winning description is a structure/paper
+        # TITLE ("... variant Delta+PHS L36R at cryogenic temperature",
+        # "cA4-bound Cami1 in complex with 70S ribosome"), not a protein name.
+        # Case 5 tested titles (_is_pdb_title), Case 4 never did. In order:
+        #   1. the protein name inside the title ('Cami1'), if there is one;
+        #   2. the first top-3 entry that names a function;
+        #   3. nothing usable -> no final annotation (hit stays in foldseek_*).
+        # A name that is merely LONG (>= 8 words) is only swapped when a better
+        # name exists; it is never demoted on length alone.
+        _title_note = ""
+        _strict_title = _reads_like_title(best_desc, strict=True)
+        if _reads_like_title(best_desc):      # naming only: applies to defense hits too
+            _alts = [t.strip() for t in str(top3).split("|")
+                     if t.strip() and t.strip() != "NA"]
+            _core = _title_core(best_desc) if _strict_title else ""
+            _alt = _core or next((a for a in _alts
+                                  if not _reads_like_title(a) and _fs_names_a_function(a)), None)
+            if not _alt and _strict_title:
+                return (
+                    "hypothetical protein", "unknown function",
+                    "no_informative_hit", "both_uninformative", False,
+                    fs_desc,
+                    f"FoldSeek-only hit '{fs_desc}' [{fs_conf}{ev_str}{sc_str}] is a "
+                    f"structure title / wrapper, not a protein name, and no top-3 hit "
+                    f"names a function; treated as no informative hit. "
+                    f"[fs-only: title-fallback]",
+                )
+            if _alt:
+                _title_note = (f" Top hit description '{fs_desc}' reads like a "
+                               f"structure title; "
+                               + (f"protein name '{_alt}' extracted from it."
+                                  if _alt == _core else f"top-3 name '{_alt}' used instead.")
+                               + " [fs-only: title-fallback]")
+                best_desc = _apply_final_upgrades(_alt, top3)
+                best_cat  = _infer_function_cat(best_desc, "unknown function")
+
+        # [fs-only: weak-evidence] a FoldSeek-only name needs a GOOD/CONFIDENT
+        # hit to become the final annotation. A BORDERLINE hit is too weak on its
+        # own (eIF5A, NuA4, PetP, a 65 aa 'major capsid'); the hit is kept in
+        # foldseek_description / foldseek_confidence, the name in curation_suggestion.
+        if fs_conf not in ("CONFIDENT", "GOOD"):
             return (
                 "hypothetical protein", "unknown function",
-                "no_informative_hit",
-                "both_uninformative",
-                False,
-                "hypothetical protein",
-                f"Only a BORDERLINE promiscuous/eukaryotic FoldSeek hit ('{fs_desc}', "
-                f"{fs_taxname}) and no phold call -- fold-level false positive; treated "
-                f"as no informative hit.",
+                "no_informative_hit", "both_uninformative", False, best_desc,
+                f"FoldSeek-only hit '{best_desc}'{ev_str}{sc_str}{pid_str} "
+                f"[FS confidence: {fs_conf}] is too weak to name the protein; "
+                f"kept as structural evidence, not as the annotation."
+                f"{_title_note} [fs-only: weak-evidence]",
             )
 
-        # Promiscuous-fold gate: known structurally promiscuous folds (TLD/MBL,
-        # motor proteins, eukaryotic ubiquitination machinery) should NOT be
-        # auto-annotated even when FoldSeek confidence is high.  The structural
-        # similarity is real but the FUNCTION cannot be inferred without top-3
-        # agreement (Aravind 1999 PMID 11471255; Daiyasu 2001 PMID 11513844).
-        # Eukaryotic-description gate: description keywords indicate a eukaryote-
-        # specific protein (inferred from text when DB lacks embedded taxonomy).
-        # Eukaryotic-kingdom gate: best_hit_kingdom/top-3 taxonomy say Eukaryote
-        # with no Bacteria/Archaea/Virus support (stronger signal, doesn't
-        # depend on the description containing a recognisable keyword).
-        # In all cases, route to manual review with a clear explanation.
+        # GOOD+ FoldSeek-only hit that is a promiscuous fold (TLD/MBL, motor
+        # proteins, ubiquitination machinery; Aravind 1999 PMID 11471255; Daiyasu
+        # 2001 PMID 11513844), has a eukaryote-specific description, or is a
+        # eukaryotic best hit without a same-function prokaryotic/viral hit:
+        # the fold is real but the function is not inferred -> review.
         if fs_promiscuous or fs_euka_desc or fs_euka_kingdom:
             prom_note = ""
             if fs_promiscuous:
@@ -816,14 +1076,13 @@ def merge_annotations(row: pd.Series) -> tuple:
                 prom_note += (
                     " [EUKARYOTIC DESCRIPTION: description suggests a eukaryote-"
                     "specific protein despite phage context — likely a fold-level "
-                    "false positive from afdb-swissprot/pdb100 (no embedded taxonomy).]"
+                    "false positive.]"
                 )
             if fs_euka_kingdom:
                 prom_note += (
-                    f" [EUKARYOTIC TAXONOMY: best hit and all informative top-3 hits "
-                    f"are Eukaryote ({fs_taxname}) with no Bacteria/Archaea/Virus "
-                    f"support — likely a fold-level false positive regardless of "
-                    f"description wording.]"
+                    f" [EUKARYOTIC TAXONOMY: eukaryotic best hit ({fs_taxname}) and no "
+                    f"Bacteria/Archaea/Virus top-3 hit of the same function — likely a "
+                    f"fold-level false positive.]"
                 )
             return (
                 best_desc, best_cat,
@@ -834,6 +1093,21 @@ def merge_annotations(row: pd.Series) -> tuple:
                 f"FoldSeek annotation only (PHold no hit){ev_str}{sc_str}{pid_str}. "
                 f"Organism: {fs_taxname}. DB: {fs_db}. [FS confidence: {fs_conf}]"
                 f"{_defense_note}{prom_note}",
+            )
+
+        # [fs-only: low-information] a FoldSeek-only name that is only a label
+        # ('SHOCT domain-containing protein', 'XkdX family protein', 'YodL-like';
+        # see _is_low_information_name) is not used as the final annotation, at
+        # any confidence. The hit is kept: foldseek_description /
+        # foldseek_confidence unchanged, name in curation_suggestion.
+        if not defense_flag and _is_low_information_name(best_desc):
+            return (
+                "hypothetical protein", "unknown function",
+                "no_informative_hit", "both_uninformative", False, best_desc,
+                f"FoldSeek-only hit '{best_desc}'{ev_str}{sc_str}{pid_str} "
+                f"[FS confidence: {fs_conf}] names a domain/family/label, not a "
+                f"function; kept as structural evidence, not as the annotation."
+                f"{_title_note} [fs-only: low-information]",
             )
 
         # A FoldSeek-only defense hit (e.g. RloG) is a confident call, not a
@@ -847,7 +1121,8 @@ def merge_annotations(row: pd.Series) -> tuple:
             flag_review,
             best_desc,
             f"FoldSeek annotation only (PHold no hit){ev_str}{sc_str}{pid_str}. "
-            f"Organism: {fs_taxname}. DB: {fs_db}. [FS confidence: {fs_conf}]{_defense_note}",
+            f"Organism: {fs_taxname}. DB: {fs_db}. [FS confidence: {fs_conf}]"
+            f"{_defense_note}{_title_note}",
         )
 
     # -- Case 5: different (both informative, diverge) -------------------------
@@ -868,7 +1143,8 @@ def merge_annotations(row: pd.Series) -> tuple:
         # [keep-phold: subdb-priority] a phold specialised sub-DB hit (VFDB / CARD /
         # ACR -- curated, structurally-identified virulence / resistance / anti-CRISPR
         # protein) is authoritative; keep it over a divergent general-DB FoldSeek
-        # call, no flag. Defense-family sub-DBs are handled by defense-priority above.
+        # call, no flag. Defense-family sub-DBs are handled by defense-priority above;
+        # NetFlaX never reaches this point (specialised sub-DB gate, before Case 1; VFDB/CARD reach it only when close or when FoldSeek is not decisive).
         if subdb_hit and is_informative(p_desc):
             best_desc = _apply_final_upgrades(p_desc, top3)
             best_cat  = _infer_function_cat(best_desc, p_cat if is_informative(p_cat) else "unknown function")
@@ -900,6 +1176,33 @@ def merge_annotations(row: pd.Series) -> tuple:
                 f"[keep-phold: atpase-family]{_defense_note}",
             )
 
+        # [keep-phold: domain-partner] FoldSeek names a domain of the protein
+        # phold calls (lexicon.DOMAIN_PARTNERS: AP2 on an HNH endonuclease)
+        for _p_re, _fs_re, _why in _DOMAIN_PARTNERS:
+            if _p_re.search(str(p_desc)) and _fs_re.search(str(fs_desc)):
+                best_desc = _apply_final_upgrades(p_desc, top3)
+                best_cat  = _infer_function_cat(best_desc, p_cat if is_informative(p_cat) else "unknown function")
+                return (
+                    best_desc, best_cat, "phold", "auto_phold_domain_partner", False, best_desc,
+                    f"FoldSeek '{fs_desc}' is a domain of phold's '{p_desc}' ({_why}); "
+                    f"kept phold, no review. [keep-phold: domain-partner]{_defense_note}",
+                )
+
+        # [keep-phold: top3-majority] two of FoldSeek's top-3 name PHold's
+        # function, as confidently as the best hit: their name wins over a
+        # different best hit ('Minor capsid protein | Tail terminator | Tail
+        # terminator' on a PHold 'tail terminator' -> 'Tail terminator').
+        if is_informative(p_desc):
+            _maj = _top3_majority_for_phold(str(row.get("locus_tag", "")), p_desc, fs_conf)
+            if _maj:
+                best_desc = _apply_final_upgrades(_maj, top3)
+                best_cat  = _infer_function_cat(best_desc, p_cat if is_informative(p_cat) else "unknown function")
+                return (
+                    best_desc, best_cat, "both agree", "auto_keep_top3_majority", False, best_desc,
+                    f"Two FoldSeek top-3 hits name PHold's function '{p_desc}' as confidently as "
+                    f"the best hit '{fs_desc}'. Top-3 FS: {top3}. [keep-phold: top3-majority]{_defense_note}",
+                )
+
         # [merge: euka-substitute] the FS best hit is eukaryotic (by taxonomy
         # kingdom OR a curated euka description like Retinoblastoma) -> do NOT
         # prioritise it. Prefer an informative bacterial/archaeal/viral FS top-3
@@ -908,11 +1211,21 @@ def merge_annotations(row: pd.Series) -> tuple:
         # protein". If no prokaryotic top-3 hit exists, a RESCUE term (Sir2, TIR,
         # STING, ... immunity homologs) falls through to normal handling (kept);
         # anything else keeps phold and drops the euka name.
+        # Only for a GOOD+ FS call: a BORDERLINE one (incl. a eukaryotic best hit
+        # demoted in step 03) goes to weak-fs-guard / fs-only weak-evidence
+        # below, so no other top-3 hit is promoted through it.
         _best_king = str(row.get("best_hit_kingdom", "")).strip().lower()
         _euka_best = (_best_king == "eukaryote") or fs_euka_desc
-        if _euka_best and not _is_rescued_euka(fs_desc):
+        if _euka_best and not _is_rescued_euka(fs_desc) and fs_conf in ("CONFIDENT", "GOOD"):
             _prok = _first_prokaryotic_top3(
                 top3, str(row.get("foldseek_top3_kingdoms", "")))
+            # a confident PHold call is not merged with a bacterial hit of another
+            # function category ('tail length tape measure protein' + 'ParA')
+            _p_cat_txt = _category_from_text(p_desc) if is_informative(p_desc) else ""
+            if (_prok and p_conf in PHOLD_TRUSTED_CONF
+                    and _p_cat_txt in ("tail", "head and packaging", "connector")
+                    and _category_from_text(_prok) != _p_cat_txt):
+                _prok = None
             if _prok and is_informative(_prok) and not _fs_uninformative(_prok):
                 merged = f"{p_desc} / {_prok}" if is_informative(p_desc) else _prok
                 best_cat = _infer_function_cat(
@@ -955,27 +1268,22 @@ def merge_annotations(row: pd.Series) -> tuple:
         # above) a CONFIDENT/GOOD, non-promiscuous FoldSeek call should be TAKEN
         # over a WEAK (low-confidence) phold call rather than flagged divergent.
         # A phold low-conf guess is not authoritative; a confident structural
-        # hit is the better evidence -- PROVIDED that hit is actually
-        # phage-relevant. Phage-relevance gate (added after the fact):
-        # structural confidence alone does not mean the hit is contextually
-        # plausible for a phage gene -- a confident FS hit can land on a random
-        # well-conserved bacterial/eukaryotic fold that has nothing to do with
-        # phage biology, in which case a weak phold guess may still be the more
-        # relevant call and the gene deserves review rather than a silent FS
-        # override. Require the FS hit to look phage-relevant: either a named
+        # hit is the better evidence, provided it is phage-relevant: a confident
+        # hit on a conserved fold unrelated to phage biology goes to review
+        # instead. Phage-relevant means: either a named
         # phage-specific/viral-context description (`_phage_boost_factor >= 1.5`,
         # the same boost tier used for ranking), a same-host-genus hit (plausible
         # host-derived moron/AMG -- these DO occur in real prophages), or a
-        # defense-system hit. Fixes false "needs_review_divergent" such as
-        # phold(low) "outer membrane protein" vs FS(CONFIDENT) "Phage tail
-        # protein" -> take tail, no review -- while no longer silently taking a
-        # confident-but-out-of-context FS call.
+        # defense-system hit. E.g. phold(low) "outer membrane protein" vs
+        # FS(CONFIDENT) "Phage tail protein" -> take tail, no review.
         _phold_weak = (p_conf in PHOLD_WEAK_CONF) or (p_conf not in PHOLD_TRUSTED_CONF)
         _fs_relevant = (_phage_boost_factor(fs_desc) >= 1.5
-                        or bool(row.get("foldseek_same_host", False))
+                        or _flag(row, "foldseek_same_host")
                         or defense_flag)
         if (fs_conf in ("CONFIDENT", "GOOD") and not fs_promiscuous
                 and is_informative(fs_desc) and not _fs_uninformative(fs_desc)
+                and _fs_names_a_function(fs_desc)   # a bare domain label is not
+                                                    # "better evidence"
                 and _phold_weak and not subdb_hit and _fs_relevant):
             best_desc = _apply_final_upgrades(fs_desc, top3)
             best_cat  = _infer_function_cat(best_desc, "unknown function")
@@ -996,12 +1304,18 @@ def merge_annotations(row: pd.Series) -> tuple:
         if _is_ta_phold and is_informative(fs_desc) and not _fs_uninformative(fs_desc):
             _role = re.search(r'\b(antitoxin|toxin)\b', str(p_desc), re.I)
             role_str = (_role.group(1).lower() + " protein") if _role else clean_str(p_desc)
-            merged = f"{_apply_final_upgrades(fs_desc, top3)} ({role_str})"
+            # a top-3 hit naming a TA family beats a best hit that doesn't
+            # ('YgiT family' antitoxin over 'Phage Cro/CI transcriptional regulator')
+            _ta_fs = fs_desc
+            if not _TA_FAMILY.search(str(fs_desc)):
+                _ta_fs = next((_rules_clean_name(t.strip()) for t in str(top3).split("|")
+                               if _TA_FAMILY.search(t) and is_informative(t.strip())), fs_desc)
+            merged = f"{_apply_final_upgrades(_ta_fs, top3)} ({role_str})"
             return (
-                merged, "moron, auxiliary metabolic gene and host takeover",
+                merged, _TA_CATEGORY,
                 "merged", "auto_merge_TA_functionalised", False, merged,
                 f"phold TA/NetFlaX role '{p_desc}' functionalised by FoldSeek "
-                f"'{fs_desc}'. [merge: ta-functionalize]{_defense_note}",
+                f"'{_ta_fs}'. [merge: ta-functionalize]{_defense_note}",
             )
 
         # [merge: transposition-motor] phold "DNA transposition"/transposase +
@@ -1112,6 +1426,41 @@ def merge_annotations(row: pd.Series) -> tuple:
         # -- FS is just more precise. Merge as "<phold generic> (<FS specific>)".
         if is_informative(p_desc) and _GENERIC_STRUCTURAL_TERMS.match(p_desc):
             fs_specific = _fs_top3_concordant_specific(top3)
+            # A cell-wall binding domain ('Cell wall-binding protein', 'Peptidoglycan
+            # binding domain ...') is part of PHold's endolysin call, not a more
+            # specific name for it: keep PHold's name. A receptor-binding protein
+            # on a tail call IS more specific and is still merged.
+            if fs_specific and _CELL_WALL_BINDING.search(fs_specific):
+                best_desc = _apply_final_upgrades(p_desc, top3)
+                best_cat  = _infer_function_cat(best_desc, p_cat if is_informative(p_cat) else "unknown function")
+                return (
+                    best_desc, best_cat,
+                    "phold",
+                    "auto_keep_phold_fs_binding_domain",
+                    False,
+                    best_desc,
+                    f"FoldSeek's top-3 converge on '{fs_specific}', a binding domain of "
+                    f"PHold's call '{p_desc}' rather than a more specific name for it; "
+                    f"kept PHold. Top-3 FS: {top3}. [keep-phold: fs-binding-domain]{_defense_note}",
+                )
+            # A concordant name of another function category ('Cro/CI family
+            # transcriptional regulator' on a 'tail protein') does not refine
+            # PHold's structural call: keep PHold's name.
+            fs_cat = _category_from_text(fs_specific) if fs_specific else ""
+            if fs_specific and fs_cat not in ("unknown function", "other",
+                                              _category_from_text(p_desc)):
+                best_desc = _apply_final_upgrades(p_desc, top3)
+                best_cat  = _infer_function_cat(best_desc, p_cat if is_informative(p_cat) else "unknown function")
+                return (
+                    best_desc, best_cat,
+                    "phold",
+                    "auto_keep_phold_structural",
+                    False,
+                    best_desc,
+                    f"PHold's structural call '{p_desc}' kept: FoldSeek's top-3 converge on "
+                    f"'{fs_specific}' ({fs_cat}), another function category. "
+                    f"Top-3 FS: {top3}. [keep-phold: structural-call]{_defense_note}",
+                )
             if fs_specific:
                 merged = f"{p_desc} ({fs_specific})"
                 best_cat = _infer_function_cat(p_desc, p_cat if is_informative(p_cat) else "unknown function")
@@ -1130,11 +1479,9 @@ def merge_annotations(row: pd.Series) -> tuple:
 
         # [keep-phold: top3-corroboration] scan ALL of FS's top-3
         # (hyphen-normalised), not just top-1, for corroboration of PHold's call
-        # -- e.g. PHold "Anti-termination protein Q-like" vs FS top-1
-        # "Antitermination protein" (flagged divergent) but FS top-3 #3
-        # "Antiterminator Q protein of prophage CP-933K" actually confirms it;
-        # the literal hyphen difference ("anti-term" vs "antiterm") was silently
-        # blocking the match. Low-confidence phold IS included -- cross-method
+        # (PHold "Anti-termination protein Q-like" is confirmed by top-3 #3
+        # "Antiterminator Q protein of prophage CP-933K"). Low-confidence phold
+        # IS included -- cross-method
         # agreement (phold + any FS top-3 hit naming the same thing) is treated
         # as concordance regardless of phold's own confidence. AraC case: phold
         # low "kinase" + FS top-3 "histidine kinase" -> keep "kinase" (two
@@ -1331,6 +1678,21 @@ def merge_annotations(row: pd.Series) -> tuple:
                 final_cat  = _infer_function_cat(
                     suggestion, p_cat if is_informative(p_cat) else final_cat)
             divergent_source = "both agree" if suggestion in (p_final, fs_final) else "merged"
+        # A high-confidence phold call is not put in doubt by a FoldSeek hit that is
+        # only GOOD and far weaker (Arc repressor e 2e-16 vs 'Phage portal protein'
+        # e 0.005 on 108 aa): phold's name is kept without review.
+        # phold 'high' can rest on identity or ProstT5 alone, so its e-value must
+        # also beat FoldSeek's by >= 5 orders of magnitude.
+        if (not related and p_conf == "high" and fs_conf == "GOOD"
+                and _is_valid_float(p_evalue) and _is_valid_float(fs_evalue)
+                and float(p_evalue) <= float(fs_evalue) * 1e-5):
+            return (
+                p_final, _infer_function_cat(p_final, p_cat if is_informative(p_cat) else final_cat),
+                "phold", "auto_phold_over_weak_fs", False, p_final,
+                f"{explanation} High-confidence phold vs a GOOD (not CONFIDENT) "
+                f"FoldSeek hit; kept phold '{p_final}' without review. "
+                f"[keep-phold: high-phold-guard]",
+            )
         # Only genuine divergence goes to review; a defense call by itself is not
         # a doubt (defense annotation is kept regardless).
         flag_review = not related
@@ -1387,6 +1749,7 @@ def main():
 
     comp = pd.read_csv(str(comp_path))
     log(f"Loaded comparison table: {len(comp)} genes")
+    _load_top3_hits()
     log(f"Columns: {list(comp.columns)}")
 
     # -- Apply curation logic --------------------------------------------------
@@ -1417,6 +1780,20 @@ def main():
             final_desc, source, action, flag, row)
         if action == "relevant_domain_review":
             suggestion = final_desc   # keep the review suggestion in sync
+        # [review: head-tail-conflict] PHold places the protein on the head and
+        # FoldSeek on the tail (or the reverse): keep PHold's name (also as the
+        # review suggestion, which step 05 uses as the final name) and send to
+        # review; the FoldSeek name is in the explanation and in fs_description
+        _ht = _head_tail_conflict(row.get("phold_product", ""), final_desc)
+        if _ht:
+            p_name = clean_str(row.get("phold_product", ""))
+            explanation = (f"PHold '{p_name}' ({_virion_part(p_name)}) and FoldSeek '{_ht}' "
+                           f"({_virion_part(_ht)}) place the protein in different virion "
+                           f"parts; kept PHold's name, FoldSeek's is the alternative. "
+                           f"Was: {final_desc}. [review: head-tail-conflict]")
+            final_desc, source, action, flag, suggestion = (
+                p_name, "phold", "head_tail_conflict_review", True, p_name)
+            final_cat = _infer_function_cat(p_name, final_cat)
 
         results.append({
             **row.to_dict(),   # keep all comparison columns

@@ -159,9 +159,7 @@ def coords_from_gbk(gbk_path: str) -> pd.DataFrame:
             #   pharokka / phold  -> ID
             #   NCBI RefSeq GBK   -> protein_id
             #   bakta / generic   -> locus_tag
-            # FFAL on a nucleotide FASTA calls genes with pyrodigal-gv and writes
-            # `ID`, so without it this returned an EMPTY frame and the downstream
-            # merge died with KeyError: 'locus_tag'.
+            #   pyrodigal-gv      -> ID
             lt = (feat.qualifiers.get("locus_tag") or
                   feat.qualifiers.get("protein_id") or
                   feat.qualifiers.get("ID") or [None])[0]

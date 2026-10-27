@@ -28,15 +28,13 @@ agreement are identical to native phageFACTor and to the 02w webAPI bridge.
 Design mirror: this is a sibling of phagefactor/scripts/02w_foldseek_webapi.py
 :: webm8_to_best_hit(). If you change one, glance at the other.
 
-TAXONOMY NOTE
--------------
-FFAL's FoldSeek result TSV currently carries NO taxname/taxid column (see
-foldfirst.results.foldfirst_parsing.get_foldfirst_hits). phageFACTor uses taxname
-for the same-host flag and the eukaryotic-kingdom demote. This adapter AUTODETECTS
-a taxname column: if FFAL is patched to emit one (recommended upstream PR — the
-pdb/af50m DBs ship *_taxonomy files), host + euka-by-taxonomy light up automatically.
-Until then they degrade gracefully (same_host -> NA/False, euka-by-taxonomy off;
-description-keyword euka still works).
+TAXONOMY
+--------
+FFAL writes taxid and taxname per hit for databases with a *_taxonomy file
+(optional per DB). The taxid gives each hit its domain through the NCBI taxdump
+(PHAGEFACTOR_TAXDUMP, lib/taxonomy.py); taxname drives the same-host flag. Without
+these columns both fall back gracefully (organism-name keywords, same_host NA)
+and the description-keyword eukaryote check still applies.
 
 Usage
 -----
@@ -51,8 +49,7 @@ Repeat per prophage into the SAME --pf-out to accumulate all four, then run:
   PHAGEFACTOR_RUN_DIR=<abs runs/filipa_ffal> python scripts/03_compare_annotations.py
   PHAGEFACTOR_RUN_DIR=<abs runs/filipa_ffal> python scripts/04_curate_annotations.py
 
-(Exact env wiring for 03/04 depends on your config.py resolution; see the plan
-§3.3 and the phageFACTor RUN_INSTRUCTIONS. The adapter only WRITES the inputs.)
+run_curation.sh does all of this per phage. The adapter only writes the inputs.
 """
 
 import argparse
@@ -78,10 +75,8 @@ def _wire_phagefactor(pf_root: str):
             "Cannot find phageFACTor. Pass --phagefactor /path/to/phagefactor "
             "or export PHAGEFACTOR_ROOT."
         )
-    # scripts/lib FIRST. The shared modules moved there; if an old copy is still
-    # sitting in scripts/ (e.g. an rsync without --delete), putting scripts/
-    # first would silently import the STALE foldseek_scoring/lexicon and the
-    # curation would run against superseded rules while looking fine.
+    # scripts/lib first, so a leftover copy of a shared module in scripts/ is
+    # never imported instead of the current one.
     lib = root / "scripts" / "lib"
     sys.path.insert(0, str(root))
     sys.path.insert(0, str(root / "config"))
@@ -192,12 +187,14 @@ def _load_ffal_hits(ffal_out: Path) -> pd.DataFrame:
     if "qLen" in raw.columns:
         out["aa_length"] = pd.to_numeric(raw["qLen"], errors="coerce")
 
-    # taxname: autodetect (stock FFAL omits it; the taxonomy patch adds it)
+    # taxonomy columns are optional per FFAL database
     tax_col = next((c for c in ("taxname", "taxlineage", "taxid") if c in raw.columns), None)
-    out["taxname"] = raw[tax_col].astype(str) if tax_col else ""
+    out["taxname"] = raw["taxname"].astype(str) if "taxname" in raw.columns else ""
+    if "taxid" in raw.columns:
+        out["taxid"] = raw["taxid"]
     if tax_col is None:
-        log("  NOTE: no taxname column in FFAL output -> same_host/euka-by-taxonomy "
-            "disabled. Apply ffal_patches/apply_taxonomy_patch.py to enable (plan §3.4).")
+        log("  NOTE: no taxonomy columns in the FFAL hit tables -> same_host off, "
+            "hit domains from organism names only.")
 
     _sanity_hits(out, tax_col)
     return out
@@ -228,9 +225,11 @@ def build_best_top3(hits: pd.DataFrame, best_csv: Path, top3_csv: Path,
     """Score the FFAL hits with phageFACTor's scorer and build best/top3 —
     identical logic to 02d local mode and 02w webAPI bridge."""
     from foldseek_scoring import (
-        _is_informative_fs, _phage_boost_factor, _is_same_host_hit,
+        _is_informative_fs, _phage_boost_factor, _is_same_host_hit, _host_boost_factor,
         _is_promiscuous_fold_hit, _has_eukaryotic_description, build_best_and_top3,
+        gate_phage_boost, _DEFENSE_ANY,
     )
+    from taxonomy import add_kingdom_columns, kingdom_counts_log
     try:
         from config import FOLDSEEK_EVALUE_MAX, FOLDSEEK_SCORE_OVERRIDE
     except Exception:
@@ -241,13 +240,16 @@ def build_best_top3(hits: pd.DataFrame, best_csv: Path, top3_csv: Path,
                  (df["score"].fillna(0) >= FOLDSEEK_SCORE_OVERRIDE)
     df["informative"] = df["description"].apply(_is_informative_fs) & quality_ok
     df["phage_boost"] = df["description"].apply(_phage_boost_factor)
-    df["composite_score"] = df["score"].fillna(0) * df["phage_boost"]
     df["same_host"] = df["taxname"].apply(_is_same_host_hit)
-    df["defense_flag"] = False
+    df["host_boost"] = [_host_boost_factor(d, h) for d, h in zip(df["description"], df["same_host"])]
+    df["composite_score"] = df["score"].fillna(0) * df["phage_boost"] * df["host_boost"]
+    df["defense_flag"] = df["description"].fillna("").apply(lambda d: bool(_DEFENSE_ANY.search(str(d))))
     df["promiscuous_fold_flag"] = df["description"].apply(lambda d: _is_promiscuous_fold_hit(str(d)))
     df["eukaryotic_desc_flag"] = df["description"].apply(lambda d: _has_eukaryotic_description(str(d)))
-    df = df.sort_values(["gene", "composite_score", "evalue"],
-                        ascending=[True, False, True])
+    # hit domain: FFAL tables carry taxid, no lineage -> NCBI taxdump, else name keywords
+    add_kingdom_columns(df)
+    vlog(f"  hit domain source: {kingdom_counts_log(df)}")
+    df = gate_phage_boost(df)   # sorts by composite_score, like 02d/02w
 
     n_inf = int(df["informative"].sum())
     vlog(f"  [sanity] scored {len(df)} hits · {n_inf} informative "
@@ -267,14 +269,84 @@ def build_best_top3(hits: pd.DataFrame, best_csv: Path, top3_csv: Path,
 
 
 # --------------------------------------------------------------------------- #
+# Phold calls at a stricter e-value than the FFAL search
+# --------------------------------------------------------------------------- #
+def refilter_phold_calls(pcds: pd.DataFrame, ffal_out: Path, max_evalue: float) -> pd.DataFrame:
+    """Redo the per-CDS Phold calls from foldseek_results_phold.tsv using only hits
+    with e-value <= max_evalue, with FFAL's rules: the best hit with a known product,
+    else the best hit; FFAL's confidence tiers. Pharokka-derived calls are kept.
+    Needs phold_annots.tsv from the FFAL database ($PHOLD_ANNOTS, else the
+    --database of the FFAL run log); without it the FFAL calls are kept."""
+    import re
+    res = ffal_out / "foldseek_results_phold.tsv"
+    annots = os.environ.get("PHOLD_ANNOTS")
+    if not annots:
+        m = next((re.search(r"Parameter: --database (\S+)", l.read_text(errors="ignore"))
+                  for l in sorted(ffal_out.glob("foldfirst_run_*.log"))), None)
+        annots = Path(m.group(1)) / "phold_annots.tsv" if m else None
+    if not res.is_file() or not annots or not Path(annots).is_file():
+        log("  Phold calls kept as made by FFAL (no hit table or phold_annots.tsv)")
+        return pcds
+
+    cols = ["query", "target", "bitscore", "fident", "evalue",
+            "qStart", "qEnd", "qLen", "tStart", "tEnd", "tLen"]
+    h = pd.read_csv(res, sep="\t", header=None, names=cols, usecols=range(11))
+    h["evalue"] = pd.to_numeric(h["evalue"], errors="coerce")
+    h["cds_id"] = h["query"].str.replace("~PIPE~", "|", regex=False).str.split(":", n=1).str[-1]
+    h[["phrog", "tophit_protein"]] = h["target"].str.replace(".pdb", "", regex=False) \
+        .str.split(":", n=1, expand=True)
+    h["phrog"] = h["phrog"].str.replace("phrog_", "", regex=False)
+    env = h["phrog"].str.startswith("envhog_")
+    h.loc[env, "tophit_protein"] = "envhog_" + h.loc[env, "tophit_protein"]
+    h["phrog"] = h["phrog"].str.replace(r"^(envhog|efam|dgr)_", "", regex=True)
+    h = h.merge(pd.read_csv(annots, sep="\t", dtype={"phrog": str}), on="phrog", how="left")
+    h["product"] = h["product"].fillna("hypothetical protein")
+    h["function"] = h["function"].fillna("unknown function")
+    card_vfdb = h["phrog"].isin(["vfdb", "card"])
+    h = h[(h["evalue"] <= max_evalue) & (~card_vfdb | (h["evalue"] < 1e-10))]
+    named = h["product"] != "hypothetical protein"
+    h = h[named | ~named.groupby(h["cds_id"]).transform("any")]
+    best = h.sort_values("evalue", kind="stable").drop_duplicates("cds_id").set_index("cds_id")
+    best["qCov"] = ((best["qEnd"] - best["qStart"]) / best["qLen"]).round(2)
+    best["tCov"] = ((best["tEnd"] - best["tStart"]) / best["tLen"]).round(2)
+    conf = pd.to_numeric(pcds.set_index(pcds["cds_id"].str.split(":", n=1).str[-1])
+                         .get("prostt5_confidence"), errors="coerce").reindex(best.index)
+    high = (best.qCov > 0.8) & (best.tCov > 0.8) & ((best.fident > 0.3) | (conf > 60) | (best.evalue < 1e-10))
+    med = ((best.qCov > 0.8) | (best.tCov > 0.8)) & ((best.fident > 0.3) | conf.between(45, 60)) & (best.evalue < 1e-5)
+    best["annotation_confidence"] = ["high" if a else "medium" if b else "low" for a, b in zip(high, med)]
+    best["annotation_method"] = "foldseek"
+
+    out = pcds.copy()
+    key = out["cds_id"].str.split(":", n=1).str[-1]
+    redo = out["annotation_method"] != "pharokka"
+    calls = ["phrog", "function", "product", "annotation_method", "annotation_confidence",
+             "bitscore", "fident", "evalue", "qStart", "qEnd", "qLen", "qCov",
+             "tStart", "tEnd", "tLen", "tCov", "tophit_protein"]
+    calls = [c for c in calls if c in out.columns]
+    before = out["product"].copy()
+    out.loc[redo, calls] = None
+    out.loc[redo, ["phrog", "function", "product", "annotation_method", "annotation_confidence"]] = \
+        ["No_PHROG", "unknown function", "hypothetical protein", "none", "none"]
+    hit = redo & key.isin(best.index)
+    out.loc[hit, calls] = best.loc[key[hit], calls].to_numpy()
+    log(f"  Phold calls redone at e <= {max_evalue:g}: "
+        f"{int((out['product'] != before).sum())} of {int(redo.sum())} changed")
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # FFAL phold per-CDS -> phold_all.tsv + gene_metadata.csv
 # --------------------------------------------------------------------------- #
 def build_phold_and_metadata(per_cds_tsv: Path, prophage: str,
                              phold_all_out: Path, gene_meta_out: Path,
-                             append: bool, all_hypothetical: bool = True):
+                             append: bool, all_hypothetical: bool = True,
+                             phold_evalue: float = None):
     """Concat the FFAL Phold per-CDS TSV into phold_all.tsv, and derive
-    gene_metadata.csv (is_hypothetical flag) that step 03 needs."""
+    gene_metadata.csv (is_hypothetical flag) that step 03 needs. With
+    phold_evalue, the Phold calls are first redone at that e-value."""
     pcds = pd.read_csv(per_cds_tsv, sep="\t", low_memory=False)
+    if phold_evalue:
+        pcds = refilter_phold_calls(pcds, per_cds_tsv.parent, phold_evalue)
 
     # locus_tag from cds_id
     lt_col = "cds_id" if "cds_id" in pcds.columns else pcds.columns[0]
@@ -314,11 +386,8 @@ def build_phold_and_metadata(per_cds_tsv: Path, prophage: str,
     # "this preserves the merged-evidence rescues". Phold's call is then COMPETING
     # EVIDENCE that curation can merge with / agree with / override.
     #
-    # Taking is_hypothetical from PHOLD's own product instead (the first version of
-    # this adapter) excludes every gene phold named from the denominator AND from
-    # the numerator, so phold can never appear in a curation decision: no `merged`,
-    # no `both agree`, and phold's names never reach final_product. On 5 OMM12
-    # prophages that gave 26/380 named (7%) vs 264/474 (56%) natively.
+    # Taking is_hypothetical from PHOLD's own product instead would exclude every
+    # gene phold named, so phold could never take part in a curation decision.
     #
     # FFAL has no independent prior annotation (FASTA input -> pyrodigal-gv calls
     # genes with no function; GenBank input -> phold overwrites product), so the
@@ -367,6 +436,8 @@ def main():
     ap.add_argument("--append", action="store_true",
                     help="append to phold_all/gene_metadata (use for prophages 2..N)")
     ap.add_argument("--all-hits", action="store_true", help="also dump all scored hits")
+    ap.add_argument("--phold-evalue", type=float, default=1e-3,
+                    help="redo the Phold calls keeping hits with e-value <= this (0 = keep FFAL's calls)")
     ap.add_argument("--no-all-hypothetical", action="store_true",
                     help="derive is_hypothetical from PHOLD's product instead of "
                          "treating every CDS as a curation target. NOT recommended: "
@@ -419,6 +490,7 @@ def main():
         pf_out / "split" / "gene_metadata.csv",
         append=a.append,
         all_hypothetical=not a.no_all_hypothetical,
+        phold_evalue=a.phold_evalue,
     )
 
     # 3) sub-DB evidence (VFDB/CARD/ACR/NetFlaX/DefenseFinder). Step 03 globs

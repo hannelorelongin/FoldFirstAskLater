@@ -19,7 +19,7 @@ Functions exported:
   _upgrade_description      : pick the most informative variant
   _compute_fs_confidence    : CONFIDENT / GOOD / BORDERLINE / WEAK / NO_HIT
   build_best_and_top3       : per-gene best-hit + top-3 frame builders
-  _DEFENSE_PATTERN          : regex (exported for re-use)
+  _DEFENSE_ANY              : regex (lexicon.DEFENSE_ANY, exported for re-use)
 """
 
 import re
@@ -30,11 +30,18 @@ try:
 except ImportError as e:  # pragma: no cover -- pipeline-level dependency
     raise SystemExit(f"Missing dependency: {e}\n  pip install pandas")
 
-from config import UNINFORMATIVE_STRINGS, HOST_GENUS
+from config import (UNINFORMATIVE_STRINGS, HOST_GENUS,
+                    FS_CONFIDENT_EVALUE, FS_CONFIDENT_SCORE, FS_CONFIDENT_TOP3_SCORE,
+                    FS_GOOD_EVALUE, FS_GOOD_SCORE, FS_GOOD_TOP3_EVALUE,
+                    FS_BORDERLINE_EVALUE, FS_BORDERLINE_SCORE,
+                    FS_BORDERLINE_SCOREONLY_EVALUE)
 
 # Single source of truth for description vocabulary (see lexicon.py).
 from lexicon import (
     is_informative_desc,
+    classify,
+    TIER_LOW,
+    GENERIC_DESCRIPTORS as _GENERIC_DESCRIPTORS,
     GENE_LABEL as _GENE_LABEL,
     UNCHAR_PATTERN as _UNCHAR_PATTERN,
     GENERIC_DOMAIN as _GENERIC_DOMAIN,
@@ -45,15 +52,29 @@ from lexicon import (
     PDB_CRYSTAL_PREFIX as _PDB_CRYSTAL_PREFIX,
     PDB_TRAILING_QUAL as _PDB_TRAILING_QUAL,
     PDB_UNINFORMATIVE as _PDB_UNINFORMATIVE,
+    PDB_TITLE as _PDB_TITLE,
     PROMISCUOUS_FOLDS as _PROMISCUOUS_FOLD_PATTERNS,
-    DEFENSE_PATTERN as _DEFENSE_PATTERN,
+    DEFENSE_ANY as _DEFENSE_ANY,
     EUKARYOTIC_DESC as _EUKARYOTIC_DESCRIPTION_KEYWORDS,
 )
 
-try:
-    from config import HOST_BOOST
-except ImportError:      # older config.py without the setting
-    HOST_BOOST = 1.20
+from config import LOW_INFO_MALUS, HOST_BOOST
+from rules import clean_name, name_alternatives, same_function, UPGRADE_RULES, _PHAGE_FUNCTION
+
+_GP_ORF_LABEL = re.compile(r"\b(?:gp|orf)\d+\b", re.I)
+
+
+def _names_known_function(desc: str) -> bool:
+    """A domain label that names a phage function ('Integrase catalytic
+    domain-containing protein'): not a low-information label in the vote."""
+    d = _FRAGMENT_TAG.sub("", str(desc or "")).strip()
+    return bool(d) and bool(_PHAGE_SPECIFIC.search(_GP_ORF_LABEL.sub("", d)))
+
+
+def _renamed_by_rule(desc: str) -> bool:
+    """A naming rule (rules.UPGRADE_RULES) renames this label to a function name."""
+    return any(top3_pat is None and tmpl and not re.search(r"\\\d", tmpl) and pat.search(desc)
+               for pat, top3_pat, tmpl in UPGRADE_RULES)
 
 
 # =============================================================================
@@ -86,22 +107,15 @@ except ImportError:      # older config.py without the setting
 #   capsid proteins, Rossmann-fold terminase ATPase domains).  Only folds whose
 #   phage hits are nearly always false positives are included.
 #
-# Action: hits matching these patterns are flagged with promiscuous_fold_flag=True
-# in best_hit.csv.  Step 04 then routes them to needs_review rather than
-# auto-annotating.  The flag is NOT an automatic rejection: many true positives
-# exist (e.g. a real MBL-superfamily RNA-repair enzyme in a moron module).
+# Action: hits matching these patterns are flagged (promiscuous_fold_flag) and a
+# best hit's confidence is capped at BORDERLINE, so it never names a gene on its
+# own; it stays in the table as evidence. Not a rejection: true positives exist
+# (e.g. a real MBL-superfamily RNA-repair enzyme in a moron module).
 
-# _PROMISCUOUS_FOLD_PATTERNS is now defined ONCE in lexicon.py as PROMISCUOUS_FOLDS,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
-# Eukaryotic fold keywords inferred from description text alone (no taxonomy).
-# Used for afdb-swissprot and pdb100 hits where taxname="" because the DB
-# was built without embedded taxonomy.  Pattern is intentionally conservative
-# (only unambiguous eukaryote-specific terms) to avoid false demotion.
-# _EUKARYOTIC_DESCRIPTION_KEYWORDS is now defined ONCE in lexicon.py as EUKARYOTIC_DESC,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
+# Eukaryotic description keywords (lexicon.EUKARYOTIC_DESC): unambiguous
+# eukaryote-specific terms in the hit description, a signal independent of the
+# hit's taxonomy.
 
 
 def _is_promiscuous_fold_hit(description: str) -> bool:
@@ -136,19 +150,10 @@ def _has_eukaryotic_description(description: str) -> bool:
 # engineered/synthetic construct, etc.) we return None so the caller can treat
 # the hit as uninformative.
 
-# _PDB_CRYSTAL_PREFIX is now defined ONCE in lexicon.py as PDB_CRYSTAL_PREFIX,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 # Trailing qualifiers to strip once we have the protein name
-# _PDB_TRAILING_QUAL is now defined ONCE in lexicon.py as PDB_TRAILING_QUAL,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 # PDB titles that are uninformative even after extraction
-# _PDB_UNINFORMATIVE is now defined ONCE in lexicon.py as PDB_UNINFORMATIVE,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 
 def _extract_pdb_description(description: str) -> str:
@@ -194,9 +199,6 @@ def _extract_pdb_description(description: str) -> str:
 # DESCRIPTION INFORMATIVENESS
 # -----------------------------------------------------------------------------
 
-# _UNCHAR_PATTERN is now defined ONCE in lexicon.py as UNCHAR_PATTERN,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 
 def _is_informative_fs(description: str) -> bool:
@@ -214,38 +216,23 @@ def _is_informative_fs(description: str) -> bool:
 # PHAGE-CONTEXT COMPOSITE SCORING
 # -----------------------------------------------------------------------------
 
-# _PHAGE_SPECIFIC is now defined ONCE in lexicon.py as PHAGE_SPECIFIC,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
-# _PHAGE_CONTEXT is now defined ONCE in lexicon.py as PHAGE_CONTEXT,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
-# _GENERIC_DOMAIN is now defined ONCE in lexicon.py as GENERIC_DOMAIN,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
-# _DEFENSE_PATTERN is now defined ONCE in lexicon.py as DEFENSE_PATTERN,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
+# _DEFENSE_ANY is lexicon.DEFENSE_ANY (defense systems + toxin-antitoxin), imported above.
 
 
 # bare gp / phage-protein / Mu-like wrapper hits -> demoted in the top-3 ranking
-# _GP_WRAPPER_MALUS is now defined ONCE in lexicon.py as GP_WRAPPER,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
 
 def _phage_boost_factor(desc: str) -> float:
     """Composite-score multiplier (named phage protein x2, viral context x1.5,
-    generic 'family/domain-containing' suffix x0.75 penalty, gp/wrapper x0.40 malus).
+    generic 'family/domain-containing' suffix x LOW_INFO_MALUS (0.60) penalty, gp/wrapper x0.40 malus).
 
-    The x0.75 generic penalty also covers GENE-LABEL style names (UPF1234 protein,
+    The low-information penalty also covers GENE-LABEL style names (UPF1234 protein,
     YabC protein, orfNN, 'Prophage ..., Orf12'): these carry as little functional
     information as a bare 'X family protein', so they should not out-rank a named
-    function at equal bitscore. (Added 2026-07; previously only the domain/family
-    SUFFIX was penalised.)"""
+    function at equal bitscore."""
     if not desc or not isinstance(desc, str):
         return 1.0
     boost = 1.0
@@ -254,8 +241,12 @@ def _phage_boost_factor(desc: str) -> float:
     elif _PHAGE_CONTEXT.search(desc):
         boost *= 1.50
     desc_for_generic = re.sub(r'\s*\(fragment\)\s*$', '', desc.strip(), flags=re.IGNORECASE)
-    if _GENERIC_DOMAIN.search(desc_for_generic) or _GENERIC_NAMES.search(desc_for_generic):
-        boost *= 0.75
+    # a defense domain label that a naming rule turns into a named protein
+    # ('SMODS-associating 2TM ... domain-containing protein' -> SLATT effector)
+    # names a function: no low-information malus
+    if ((_GENERIC_DOMAIN.search(desc_for_generic) or _GENERIC_NAMES.search(desc_for_generic))
+            and not (_DEFENSE_ANY.search(desc_for_generic) and _renamed_by_rule(desc_for_generic))):
+        boost *= LOW_INFO_MALUS     # config foldseek.low_info_malus (default 0.60)
     # gp/wrapper MALUS -- a bare "gpNN" / "phage protein" / "Mu-like
     # prophage protein" carries no function; demote it so genuinely informative
     # hits surface in the per-gene top-3 (gp hits crowd out useful ones).
@@ -306,12 +297,7 @@ def _is_same_host_hit(taxname: str):
 # GENERIC-NAME DETECTION & DESCRIPTION UPGRADE
 # -----------------------------------------------------------------------------
 
-# _GENERIC_NAMES is now defined ONCE in lexicon.py as GENERIC_NAMES,
-# imported at the top of this file. The rationale above still
-# applies -- only the definition moved.
 
-# _GENE_LABEL is now defined ONCE in lexicon.py as GENE_LABEL,
-# imported at the top of this file.
 
 
 def _is_generic_name(desc: str) -> bool:
@@ -320,25 +306,155 @@ def _is_generic_name(desc: str) -> bool:
     return bool(_GENERIC_NAMES.search(desc.strip()))
 
 
-def _top3_agrees(descs: list) -> bool:
-    """Return True iff 2+ descriptions refer to the same function (Fragment-aware)."""
-    normed = []
-    for d in descs:
-        if not d or not isinstance(d, str):
-            continue
-        n = re.sub(r'\s*\(fragment\)\s*$', '', d.strip().lower())
-        normed.append(n)
+def _top3_agrees(descs: list, anchor=None) -> bool:
+    """Return True iff 2+ descriptions refer to the same function (Fragment-aware).
+
+    With `anchor` (the best hit's name and/or the upgraded name the gene would
+    get; a string or a list), one of the agreeing pair must be an anchor: two
+    hits that agree only with each other do not corroborate the best hit."""
+    def _n(d):
+        return re.sub(r'\s*\(fragment\)\s*$', '', d.strip().lower())
+    def _same(a, b):
+        return a == b or a.startswith(b + " ") or b.startswith(a + " ")
+    normed = [_n(d) for d in descs if d and isinstance(d, str)]
     if len(normed) < 2:
         return False
+    anchors = [anchor] if isinstance(anchor, str) else list(anchor or [])
+    anchors = [_n(a) for a in anchors if a and isinstance(a, str)]
+    if anchors:
+        # an anchor is normally one of the top-3 itself: it needs one MORE match
+        # anchor matches also count rules.same_function ('DNA-binding protein'
+        # backs 'DNA binding domain protein, excisionase family')
+        return any(sum(_same(a, b) or same_function(a, b) for b in normed)
+                   >= (2 if a in normed else 1) for a in anchors)
     for i in range(len(normed)):
         for j in range(i + 1, len(normed)):
-            a, b = normed[i], normed[j]
-            if a == b or a.startswith(b + " ") or b.startswith(a + " "):
+            if _same(normed[i], normed[j]):
                 return True
     return False
 
 
-def _upgrade_description(best_desc: str, top3_descs: list) -> str:
+_TITLE_TAIL = re.compile(r"\b(variant|mutant)\b.*\b(at|in|with)\b|"
+                         r"\bat\s+(cryogenic|room)\s+temperature\b|"
+                         r"\bin\s+complex\s+with\b", re.I)
+
+
+def _reads_like_title(desc: str, strict: bool = False) -> bool:
+    """A structure/paper TITLE rather than a protein name: a tell-tale phrase
+    (lexicon.PDB_TITLE), a variant/condition tail ('... variant Delta+PHS L36R
+    at cryogenic temperature'), or simply >= 8 words. strict=True ignores the
+    word count (phrase evidence only). Shared with step 04."""
+    if not desc or not isinstance(desc, str):
+        return False
+    d = desc.strip()
+    phrase = bool(_PDB_TITLE.search(d)) or bool(_TITLE_TAIL.search(d))
+    return phrase if strict else (phrase or len(d.split()) >= 8)
+
+
+def _is_low_information(desc: str) -> bool:
+    """Lexicon tier 1: a domain/family/repeat label, gene label, ORF or wrapper."""
+    return classify(desc)[0] == TIER_LOW
+
+
+def _low_info(desc: str) -> bool:
+    """Low-information label that does not name a known function."""
+    return _is_low_information(desc) and not _names_known_function(desc)
+
+
+_TIER_RANK = {"NO_HIT": 0, "WEAK": 1, "BORDERLINE": 2, "GOOD": 3, "CONFIDENT": 4}
+_FRAGMENT_TAG = re.compile(r"\s*\(fragment\)\s*$", re.I)
+
+
+def _preferred_name(best_desc: str, cand: str) -> str:
+    """Two names for the SAME function (rules.same_function): the cleaned,
+    unambiguous ('A/B' is ambiguous), non-bare-family, most specific one.
+    A tie goes to the majority (cand)."""
+    def key(d):
+        alts = name_alternatives(d)
+        bare_family = bool(re.fullmatch(r"\S+\s+family", clean_name(d), re.I))
+        return (len(alts) == 1, not bare_family, max((len(a) for a in alts), default=0))
+    return clean_name(best_desc) if key(best_desc) > key(cand) else clean_name(cand)
+
+
+def _vote_candidate_ok(best_desc: str, cand: str) -> bool:
+    """Gates every majority candidate must pass, whatever happens next: never a
+    title, a eukaryote-specific name, a promiscuous fold, a generic descriptor,
+    or a low-information label replacing an informative name."""
+    n = _FRAGMENT_TAG.sub("", str(cand)).strip().lower()
+    if (_reads_like_title(cand) or _has_eukaryotic_description(cand)
+            or _is_promiscuous_fold_hit(cand) or n in _GENERIC_DESCRIPTORS):
+        return False
+    return not _is_low_information(cand) or _low_info(best_desc)
+
+
+def _majority_may_replace(best_desc: str, cand: str,
+                          best_score=None, cand_score=None,
+                          best_tier=None, cand_tier=None) -> bool:
+    """May the top-3 majority description `cand` replace the best hit's own
+    description?
+
+    Only the DESCRIPTION is swapped (accession, taxon, kingdom, e-value and
+    score stay those of hit #1), so the vote may confirm or sharpen hit #1 but
+    must not override stronger evidence:
+      * an uninformative best hit or a generic gene label (lexicon.GENERIC_NAMES:
+        orf12, UPF0123 protein, y-genes) can always be replaced;
+      * a title, a eukaryote-specific name, a promiscuous fold, a generic
+        descriptor (lexicon.GENERIC_DESCRIPTORS: 'Transcriptional regulator',
+        'DNA-binding protein') or a
+        low-information label (domain/family suffix, gene label, wrapper) never
+        replaces an informative, named best hit;
+      * a eukaryote-specific or low-information best hit is replaced by a
+        majority that names a function;
+      * a generic-descriptor best hit ('DNA-binding protein', 'Transcriptional
+        regulator') is replaced by a majority that names a more specific
+        function, provided the majority's own FoldSeek confidence tier is at
+        least that of hit #1 (its score may be lower: 'DNA-binding protein'
+        576 CONFIDENT vs 'Phage tail tube protein' 351 x2 CONFIDENT -> tail tube).
+        Without tiers, the more informative name wins;
+      * otherwise the majority must have the stronger alignment: its best raw
+        FoldSeek score >= that of hit #1. The phage boost decides the ranking
+        among comparable hits, not whether two hits outvote a stronger one
+        ('Phage tail sheath' 2326 x2 vs 'tape measure' 1898 -> sheath;
+        'Actin filament-associated' 150 x2 vs 'Capsid protein' 175 -> capsid).
+        Without scores, falls back to the boost (cand must not rank lower).
+    """
+    if not best_desc or not _is_informative_fs(best_desc) or _is_generic_name(best_desc):
+        return True
+    norm = lambda d: re.sub(r'\s*\(fragment\)\s*$', '', str(d).lower().strip())
+    if norm(best_desc) == norm(cand):
+        return True
+    if (_reads_like_title(cand) or _has_eukaryotic_description(cand)
+            or _is_promiscuous_fold_hit(cand)
+            or norm(cand) in _GENERIC_DESCRIPTORS):
+        return False
+    if _is_low_information(cand) != _low_info(best_desc):
+        return _low_info(best_desc)
+    if _has_eukaryotic_description(best_desc):
+        return True
+    if norm(best_desc) in _GENERIC_DESCRIPTORS:
+        # cand is informative, named, not low-information and not itself a
+        # generic descriptor (checked above): more specific than hit #1.
+        if best_tier is not None and cand_tier is not None:
+            return _TIER_RANK.get(cand_tier, 0) >= _TIER_RANK.get(best_tier, 0)
+        return True
+    if best_score is not None and cand_score is not None:
+        # A majority without any phage context does not outvote a phage-boosted
+        # hit #1 on raw score: it must win on the composite (score x boost) that
+        # ranked hit #1 first ('Terminase' 250 x2 vs 'DNA primase' 295 x2).
+        # The boost must come from a phage FUNCTION, not from a bare gpNN/orfNN
+        # label ('IS66 family element, orf1' is not protected against 'Transposase' x2).
+        b_boost, c_boost = _phage_boost_factor(best_desc), _phage_boost_factor(cand)
+        # 'Conserved phage C-terminus' says 'phage' but names no function
+        names_phage_function = bool(_PHAGE_FUNCTION.search(_GP_ORF_LABEL.sub("", best_desc)))
+        if c_boost <= 1.0 < b_boost and names_phage_function:
+            return cand_score * c_boost >= best_score * b_boost
+        return cand_score >= best_score
+    return _phage_boost_factor(cand) >= _phage_boost_factor(best_desc)
+
+
+def _upgrade_description(best_desc: str, top3_descs: list,
+                         best_score=None, top3_scores=None,
+                         best_evalue=None, top3_evalues=None) -> str:
     """Pick the most informative annotation from best_desc + top3.
 
     PDB crystal-structure titles are cleaned up before ranking:
@@ -353,6 +469,10 @@ def _upgrade_description(best_desc: str, top3_descs: list) -> str:
 
     best_desc = _clean(best_desc) or ""
     top3_descs = [_clean(d) for d in (top3_descs or [])]
+    if top3_scores is None or len(top3_scores) != len(top3_descs):
+        top3_scores = [None] * len(top3_descs)
+    if top3_evalues is None or len(top3_evalues) != len(top3_descs):
+        top3_evalues = [None] * len(top3_descs)
 
     all_descs = ([best_desc] if best_desc else []) + top3_descs
     informative = [d for d in all_descs if isinstance(d, str) and _is_informative_fs(d)]
@@ -362,24 +482,50 @@ def _upgrade_description(best_desc: str, top3_descs: list) -> str:
     non_generic = [d for d in informative if not _is_generic_name(d)]
 
     # Rule 1 - majority vote over top-3
-    top3_non_generic = [d for d in (top3_descs or [])
+    top3_non_generic = [(d, s, e) for d, s, e in zip(top3_descs, top3_scores, top3_evalues)
                         if isinstance(d, str) and _is_informative_fs(d) and not _is_generic_name(d)]
     if top3_non_generic:
+        _n = lambda d: re.sub(r'\s*\(fragment\)\s*$', '', str(d).lower().strip())
         norm_map: dict = {}
-        for d in top3_non_generic:
-            n = re.sub(r'\s*\(fragment\)\s*$', '', d.lower().strip())
-            norm_map.setdefault(n, []).append(d)
+        for d, s, e in top3_non_generic:
+            norm_map.setdefault(_n(d), []).append((d, s, e))
         counts = Counter({k: len(v) for k, v in norm_map.items()})
         top_norm, top_count = counts.most_common(1)[0]
         if top_count >= 2:
-            return max(norm_map[top_norm], key=len)
+            group = norm_map[top_norm]
+            # never a '(Fragment)' variant as the name; then the longest
+            cand = max((d for d, _, _ in group), key=lambda d: (not _FRAGMENT_TAG.search(d), len(d)))
+            scores = [s for _, s, _ in group if s is not None]
+            cand_score = max(scores) if scores else None
+            # Confidence tiers on the same scale as foldseek_confidence. The
+            # majority gets top-3 agreement credit (it IS a repeated name);
+            # hit #1 only if its own name recurs in the top-3.
+            best_tier = cand_tier = None
+            if best_score is not None or best_evalue is not None:
+                best_rep = [d for d in top3_descs if _n(d) == _n(best_desc)] or [best_desc]
+                best_tier = _compute_fs_confidence(best_evalue, best_score, best_rep, True)
+                cand_tier = max((_compute_fs_confidence(e, s, [cand, cand], True)
+                                 for _, s, e in group),
+                                key=lambda t: _TIER_RANK.get(t, 0))
+            # Same function, different wording ('Phage portal protein, HK97 family'
+            # vs 'Phage portal protein' x2): a naming choice, not competing
+            # evidence -> the cleanest, most specific name, whatever the scores.
+            if (best_desc and _is_informative_fs(best_desc) and not _is_generic_name(best_desc)
+                    and _vote_candidate_ok(best_desc, cand) and same_function(best_desc, cand)):
+                return _preferred_name(best_desc, cand)
+            # Different functions: the vote may replace hit #1 only on equal or
+            # stronger evidence (see _majority_may_replace).
+            if _majority_may_replace(best_desc, cand, best_score, cand_score,
+                                     best_tier, cand_tier):
+                return clean_name(cand)
 
     # Rule 2 - generic best_desc -> swap with best non-generic top-3
     if _is_generic_name(best_desc) and non_generic:
-        best_non_generic = max(non_generic, key=lambda d: (
-            2 if _PHAGE_SPECIFIC.search(d) else (1 if _PHAGE_CONTEXT.search(d) else 0),
-            len(d),
-        ))
+        # a named phage protein first, else the strongest hit (list order); a bare
+        # viral context word does not count ('viral Zalpha domain' from a PDB title
+        # is not preferred over 'HTH-type transcriptional regulator GolR')
+        best_non_generic = max(enumerate(non_generic), key=lambda x: (
+            bool(_PHAGE_SPECIFIC.search(x[1])), -x[0]))[1]
         if best_desc and _GENE_LABEL.match(best_desc.strip()):
             return f"{best_desc.strip()} ({best_non_generic})"
         return best_non_generic
@@ -390,13 +536,15 @@ def _upgrade_description(best_desc: str, top3_descs: list) -> str:
         for d in informative[1:]:
             dl = d.lower().strip()
             if dl != bl and dl.startswith(bl + " "):
-                return d
+                return clean_name(d)
 
-    return best_desc
+    # hit #1 kept: same clean-up as a vote result ('Putative ...', phage-lineage
+    # family suffix, organism prefix), so its wording is not treated differently
+    return clean_name(best_desc)
 
 
 def _compute_fs_confidence(evalue, score, top3_inf_descs: list,
-                           has_any_hit: bool) -> str:
+                           has_any_hit: bool, anchor: str = None) -> str:
     """Rate the FoldSeek structural-match quality (CONFIDENT/GOOD/BORDERLINE/WEAK/NO_HIT).
 
     CONFIDENT requires EITHER a strong evalue (<=1e-3 + score>=200) OR top3
@@ -422,30 +570,102 @@ def _compute_fs_confidence(evalue, score, top3_inf_descs: list,
 
     inf_descs = [d for d in (top3_inf_descs or [])
                  if _is_informative_fs(str(d) if d else "")]
-    agrees = _top3_agrees(inf_descs)
+    agrees = _top3_agrees(inf_descs, anchor)
 
     # CONFIDENT: requires strong evalue+score, OR top3 agreement at threshold.
-    # Score-only CONFIDENT was removed: high structural-alignment scores are
-    # common for promiscuous folds (see _PROMISCUOUS_FOLD_PATTERNS) and do not
-    # alone constitute confident functional annotation.
-    if ev is not None and ev <= 1e-3 and sc >= 200:
+    # A high score alone is not CONFIDENT: high structural-alignment scores are
+    # common for promiscuous folds (see _PROMISCUOUS_FOLD_PATTERNS).
+    if ev is not None and ev <= FS_CONFIDENT_EVALUE and sc >= FS_CONFIDENT_SCORE:
         return "CONFIDENT"
-    if agrees and ((ev is not None and ev <= 1e-3) or sc >= 300):
+    if agrees and ((ev is not None and ev <= FS_CONFIDENT_EVALUE) or sc >= FS_CONFIDENT_TOP3_SCORE):
         return "CONFIDENT"
 
-    if (ev is not None and ev <= 0.01) or sc >= 200:
+    if (ev is not None and ev <= FS_GOOD_EVALUE) or sc >= FS_GOOD_SCORE:
         return "GOOD"
-    if agrees and ev is not None and ev <= 0.05:
+    if agrees and ev is not None and ev <= FS_GOOD_TOP3_EVALUE:
         return "GOOD"
 
-    if agrees and ((ev is not None and ev <= 0.1) or sc >= 90):
+    if agrees and ((ev is not None and ev <= FS_BORDERLINE_EVALUE) or sc >= FS_BORDERLINE_SCORE):
         return "BORDERLINE"
-    if ev is not None and ev <= 0.1:
+    if ev is not None and ev <= FS_BORDERLINE_EVALUE:
         return "BORDERLINE"
-    if sc >= 90 and (ev is None or ev <= 0.5):
+    if sc >= FS_BORDERLINE_SCORE and (ev is None or ev <= FS_BORDERLINE_SCOREONLY_EVALUE):
         return "BORDERLINE"
 
     return "WEAK"
+
+
+_TIER_RANK = {"CONFIDENT": 3, "GOOD": 2, "BORDERLINE": 1, "WEAK": 0, "NO_HIT": 0}
+
+
+def _phage_part(desc: str) -> float:
+    """The phage-boost part (x2 / x1.5) of _phage_boost_factor, without the malus."""
+    if not desc or not isinstance(desc, str):
+        return 1.0
+    if _PHAGE_SPECIFIC.search(desc):
+        return 2.00
+    if _PHAGE_CONTEXT.search(desc):
+        return 1.50
+    return 1.0
+
+
+def gate_phage_boost(hits: pd.DataFrame, top_n: int = 20) -> pd.DataFrame:
+    """The phage boost may not lift a BORDERLINE/WEAK hit above a GOOD/CONFIDENT one
+    ('Phage portal protein' 159, e 0.1 over 'AntA/AntB antirepressor' 229, e 1e-3).
+
+    Each hit gets its own tier from its e-value and score; a hit backed by another
+    hit of the same function among the gene's top_n counts as top-3 agreement, so a
+    small phage protein seen twice ('Phage holin' x2, e 0.02) keeps its boost. A
+    bitscore cut-off would not do: holins and tail tubes are small and score low.
+
+    Eukaryotic hits (column `kingdom`, lib/taxonomy.py) are not phage proteins:
+    they get no phage boost, and they never rank above a GOOD+ bacterial/archaeal/
+    viral hit of the same gene (their composite_score is capped just below it).
+
+    Expects composite_score/phage_boost/informative columns; recomputes
+    composite_score and returns the frame re-sorted like the callers."""
+    hits = hits.copy()
+    king = hits["kingdom"] if "kingdom" in hits.columns else pd.Series("", index=hits.index)
+    # 1. no phage boost for a eukaryotic hit
+    for idx in hits.index[king == "Eukaryote"]:
+        part = _phage_part(hits.at[idx, "description"])
+        if part > 1.0:
+            hits.at[idx, "phage_boost"] = hits.at[idx, "phage_boost"] / part
+            hits.at[idx, "composite_score"] = hits.at[idx, "composite_score"] / part
+    inf = hits[hits["informative"]].sort_values(["gene", "composite_score"],
+                                                ascending=[True, False])
+    inf = inf.groupby("gene", sort=False).head(top_n)
+    gated, capped = {}, []
+    for _, grp in inf.groupby("gene", sort=False):
+        descs = list(grp["description"])
+        tiers = []
+        for i, (ev, sc, d) in enumerate(zip(grp["evalue"], grp["score"], descs)):
+            agrees = any(j != i and same_function(o, d) for j, o in enumerate(descs))
+            # [d, d] = 'another hit names this function' for _compute_fs_confidence
+            tiers.append(_TIER_RANK[_compute_fs_confidence(
+                ev, sc, [d, d] if agrees else [d], True)])
+        if max(tiers) >= _TIER_RANK["GOOD"]:
+            # 2. the boost does not lift a BORDERLINE/WEAK hit over a GOOD+ one
+            for idx, t, d in zip(grp.index, tiers, descs):
+                if t < _TIER_RANK["GOOD"] and _phage_part(d) > 1.0 \
+                        and king.get(idx, "") != "Eukaryote":   # already unboosted
+                    gated[idx] = _phage_part(d)
+        # 3. a eukaryotic hit ranks below the best GOOD+ prokaryotic/viral hit
+        good_prok = [hits.at[idx, "composite_score"] / gated.get(idx, 1.0)
+                     for idx, t in zip(grp.index, tiers)
+                     if t >= _TIER_RANK["GOOD"] and king.get(idx, "") in ("Bacteria", "Archaea", "Virus")]
+        if good_prok:
+            floor = max(good_prok)
+            for idx in grp.index:
+                if king.get(idx, "") == "Eukaryote" and hits.at[idx, "composite_score"] >= floor:
+                    capped.append((idx, floor * 0.999))
+    for idx, part in gated.items():
+        hits.at[idx, "phage_boost"] = hits.at[idx, "phage_boost"] / part
+        hits.at[idx, "composite_score"] = hits.at[idx, "composite_score"] / part
+    for idx, val in capped:
+        hits.at[idx, "composite_score"] = val
+    return hits.sort_values(["gene", "composite_score", "evalue"],
+                            ascending=[True, False, True])
 
 
 # =============================================================================
@@ -475,52 +695,63 @@ def build_best_and_top3(hits: pd.DataFrame, all_genes: list) -> tuple:
     # the fs_db column is empty all the way to final_annotations_table.csv, so
     # there is no way to tell whether a call came from pdb100 / afdb50 /
     # afdb-swissprot — i.e. no way to judge what each database contributes.
-    _extra_cols = [c for c in ["aa_length", "foldseek_subdb"] if c in best.columns]
+    _extra_cols = [c for c in ["aa_length", "foldseek_subdb", "kingdom", "kingdom_source"]
+                   if c in best.columns]
     best = best[["gene", "accession", "description", "taxname",
                  "pident", "evalue", "score", "composite_score",
                  "qcov_aa", "same_host", "defense_flag", "informative"] + _extra_cols]
     best = best.rename(columns={"informative": "informative_hit_found"})
 
+    # When a gene's best hit is not eukaryotic, its eukaryotic hits leave the
+    # top-3 (they stay in all_hits.csv), so they cannot rename it by majority
+    # vote or lend it top-3 agreement. Genes whose best hit is eukaryotic keep
+    # the mixed top-3 (step 03 demotes them).
+    if "kingdom" in hits.columns:
+        _euk_free = set(best.loc[best["kingdom"] != "Eukaryote", "gene"])
+        hits = hits[~(hits["gene"].isin(_euk_free) & (hits["kingdom"] == "Eukaryote"))]
+
     # Per-gene top-3 informative descriptions
-    top3_descs_map: dict = {}
+    # Per-gene top-3 informative (description, raw score, e-value)
+    top3_map: dict = {}
     for gene, grp in hits[hits["informative"]].groupby("gene", sort=False):
-        top3_descs_map[gene] = list(grp.head(3)["description"].fillna(""))
+        g3 = grp.head(3)
+        top3_map[gene] = list(zip(g3["description"].fillna(""), g3["score"], g3["evalue"]))
 
     # Phage rescue: inject specific-phage hit into top-3 if missing
-    for gene, grp in hits.groupby("gene", sort=False):
-        top3 = top3_descs_map.get(gene, [])
-        has_phage = any(_PHAGE_SPECIFIC.search(str(d)) for d in top3 if d)
-        if not has_phage:
-            phage_rescue = grp[
-                (grp["score"] > 500) &
-                (grp["evalue"] < 1e-7) &
-                (grp["description"].apply(lambda d: bool(_PHAGE_SPECIFIC.search(str(d) if d else ""))))
-            ]
-            if not phage_rescue.empty:
-                rescue_desc = phage_rescue.iloc[0]["description"]
-                if rescue_desc and rescue_desc not in top3:
-                    if len(top3) < 3:
-                        top3.append(rescue_desc)
-                    else:
-                        top3[2] = rescue_desc
-                    top3_descs_map[gene] = top3
+    rescue_pool = hits[(hits["score"] > 500) & (hits["evalue"] < 1e-7)
+                       & hits["description"].fillna("").str.contains(_PHAGE_SPECIFIC)]
+    for gene, grp in rescue_pool.groupby("gene", sort=False):
+        top3 = top3_map.get(gene, [])
+        if any(_PHAGE_SPECIFIC.search(str(d)) for d, _, _ in top3 if d):
+            continue
+        rescue = (grp.iloc[0]["description"], grp.iloc[0]["score"], grp.iloc[0]["evalue"])
+        if rescue[0] and rescue[0] not in [d for d, _, _ in top3]:
+            if len(top3) < 3:
+                top3.append(rescue)
+            else:
+                top3[2] = rescue
+            top3_map[gene] = top3
 
     upg_descs, confidences = [], []
-    for _, row in best.iterrows():
-        gene = row["gene"]
-        raw_desc = str(row.get("description") or "")
-        top3 = top3_descs_map.get(gene, [])
-        has_any_hit = pd.notna(row.get("evalue"))
-        upg = _upgrade_description(raw_desc, top3)
+    for gene, raw_desc, evalue, score in zip(best["gene"], best["description"],
+                                             best["evalue"], best["score"]):
+        raw_desc = str(raw_desc or "")
+        top3 = top3_map.get(gene, [])
+        top3_descs = [d for d, _, _ in top3]
+        upg = _upgrade_description(raw_desc, top3_descs,
+                                   best_score=score, top3_scores=[s for _, s, _ in top3],
+                                   best_evalue=evalue, top3_evalues=[e for _, _, e in top3])
         upg_descs.append(upg)
         cleaned_top3 = [
             (_extract_pdb_description(d) if _PDB_CRYSTAL_PREFIX.match(str(d)) else d)
-            for d in top3
+            for d in top3_descs
         ]
         confidences.append(_compute_fs_confidence(
-            row.get("evalue"), row.get("score"),
+            evalue, score,
             [d for d in cleaned_top3 if d and _is_informative_fs(str(d))],
-            has_any_hit,
+            pd.notna(evalue),
+            anchor=[(_extract_pdb_description(d) if _PDB_CRYSTAL_PREFIX.match(d) else d)
+                    for d in (upg, raw_desc)],
         ))
     best["description"]         = upg_descs
     best["foldseek_confidence"] = confidences
@@ -563,7 +794,7 @@ def build_best_and_top3(hits: pd.DataFrame, all_genes: list) -> tuple:
     _demote = best["promiscuous_fold_flag"] & best["foldseek_confidence"].isin(["CONFIDENT", "GOOD"])
     best.loc[_demote, "foldseek_confidence"] = "BORDERLINE"
 
-    _t3_extra = [c for c in ["foldseek_subdb"] if c in hits.columns]
+    _t3_extra = [c for c in ["foldseek_subdb", "kingdom", "kingdom_source"] if c in hits.columns]
     top3 = (
         hits[hits["informative"]]
         .groupby("gene", sort=False)
