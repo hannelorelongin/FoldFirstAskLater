@@ -5,17 +5,23 @@
 
 import copy
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import pandas as pd
 from loguru import logger
+
+from foldfirst.results.shared_parsing import filter_hits
+
+# from foldfirst.results.shared_parsing import filter_hits
 
 
 def get_topfunctions(
     result_tsv: Path,
     database: Path,
     database_name: str,
+    input_confidence_path: Optional[Path],
     structures: bool,
+    no_plddt: bool,
     card_vfdb_evalue: float,
     proteins_flag: bool,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -81,6 +87,9 @@ def get_topfunctions(
         logger.error(
             "Foldseek found no hits whatsoever - please check whether your input is really phage-like"
         )
+    else:
+        num_results = len(foldseek_df)
+        logger.info(f"Foldseek found {num_results} hits in total.")
 
     # issue #86 - convert all ~PIPE~ back to |
 
@@ -132,25 +141,36 @@ def get_topfunctions(
     )
 
     foldseek_df["phrog"] = foldseek_df["phrog"].astype("str")
+
+    # now apply filter to filter out any hits based on poor input, low coverage, or low probability of homology
+    filtered_df = filter_hits(foldseek_df, input_confidence_path, structures, no_plddt)
+    num_filtered_results = len(filtered_df)
+    if num_filtered_results == 0:
+        logger.warning(
+            "After filtering, no hits remain."
+        )
+    else:
+        logger.info(f"After filtering, {num_filtered_results} hits remain.")
+
     # read in the mapping tsv
     phrog_annot_mapping_tsv: Path = Path(database) / "phold_annots.tsv"
     phrog_mapping_df = pd.read_csv(phrog_annot_mapping_tsv, sep="\t")
     phrog_mapping_df["phrog"] = phrog_mapping_df["phrog"].astype("str")
 
     # join the dfs
-    foldseek_df = foldseek_df.merge(phrog_mapping_df, on="phrog", how="left")
+    filtered_df = filtered_df.merge(phrog_mapping_df, on="phrog", how="left")
 
     # Replace NaN values in the 'product' column with 'hypothetical protein'
-    foldseek_df["product"] = foldseek_df["product"].fillna("hypothetical protein")
-    foldseek_df["function"] = foldseek_df["function"].fillna("unknown function")
+    filtered_df["product"] = filtered_df["product"].fillna("hypothetical protein")
+    filtered_df["function"] = filtered_df["function"].fillna("unknown function")
 
-    # filter out rows of foldseek_df where vfdb or card - stricter threshold due to Enault et al
+    # filter out rows of filtered_df where vfdb or card - stricter threshold due to Enault et al
     # https://www.nature.com/articles/ismej201690
     # defaults to 1e-10
-    foldseek_df = foldseek_df[
-        ((foldseek_df["phrog"] == "vfdb") | (foldseek_df["phrog"] == "card"))
-        & (foldseek_df["evalue"].astype(float) < float(card_vfdb_evalue))
-        | ((foldseek_df["phrog"] != "vfdb") & (foldseek_df["phrog"] != "card"))
+    filtered_df = filtered_df[
+        ((filtered_df["phrog"] == "vfdb") | (filtered_df["phrog"] == "card"))
+        & (filtered_df["evalue"].astype(float) < float(card_vfdb_evalue))
+        | ((filtered_df["phrog"] != "vfdb") & (filtered_df["phrog"] != "card"))
     ]
 
     def custom_nsmallest(group):
@@ -166,7 +186,7 @@ def get_topfunctions(
             return group.loc[min_row_index]
 
     topfunction_df = (
-        foldseek_df.groupby("query", group_keys=True)
+        filtered_df.groupby("query", group_keys=True)
         .apply(custom_nsmallest)
         .reset_index(drop=True)
     )
@@ -255,7 +275,7 @@ def get_topfunctions(
 
         return weighted_bitscore_df
 
-    weighted_bitscore_df = foldseek_df.groupby("query", group_keys=True).apply(
+    weighted_bitscore_df = filtered_df.groupby("query", group_keys=True).apply(
         weighted_function
     )
 
@@ -538,48 +558,3 @@ def initialize_function_counts_dict(
 
     return count_dict
 
-
-
-def calculate_qcov_tcov(merged_df):
-    """
-    calculates and adds qCov and tCov to tophit foldseek pandas dataframe
-
-    Args:
-        merged_df (pd.DataFrame): tophits foldseek pandas dataframe
-
-    Returns:
-        pd.DataFrame: DataFrame containing the merged tophits with qCov and tCov columns
-    """
-
-    # add qcov and tcov
-    merged_df["qCov"] = (
-        (merged_df["qEnd"] - merged_df["qStart"]) / merged_df["qLen"]
-    ).round(2)
-    merged_df["tCov"] = (
-        (merged_df["tEnd"] - merged_df["tStart"]) / merged_df["tLen"]
-    ).round(2)
-
-    # reorder
-    qLen_index = merged_df.columns.get_loc("qLen")
-    tLen_index = merged_df.columns.get_loc("tLen")
-
-    new_column_order = (
-        list(
-            [
-                col
-                for col in merged_df.columns[: qLen_index + 1]
-                if col not in ["qCov", "tStart", "tEnd", "tLen", "tCov"]
-            ]
-        )
-        + ["qCov", "tStart", "tEnd", "tLen", "tCov"]
-        + list(
-            [
-                col
-                for col in merged_df.columns[tLen_index + 1 :]
-                if col not in ["qCov", "tStart", "tEnd", "tLen", "tCov"]
-            ]
-        )
-    )
-    merged_df = merged_df.reindex(columns=new_column_order)
-
-    return merged_df

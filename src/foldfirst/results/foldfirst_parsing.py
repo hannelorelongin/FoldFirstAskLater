@@ -10,9 +10,12 @@ import time
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+from typing import Optional
 
 import Bio
 from Bio.PDB import *
+
+from foldfirst.results.shared_parsing import filter_hits
 
 # settings for request
 sess = requests.Session()
@@ -26,7 +29,9 @@ def get_foldfirst_hits(
     result_tsv: Path,
     database: Path,
     database_name: str,
+    input_confidence_path: Optional[Path],
     structures: bool,
+    no_plddt: bool,
     proteins_flag: bool,
     uniprot: bool,
     offline: bool,
@@ -63,7 +68,7 @@ def get_foldfirst_hits(
         "tLen",
     ]
 
-    # tmscore and lddt computed
+    # prob, tmscore and lddt computed
     if structures:
         col_list += ["prob", "alntmscore", "lddt"]
 
@@ -76,6 +81,9 @@ def get_foldfirst_hits(
         logger.warning(
             "Foldseek found no Fold First Ask Later hits whatsoever."
         )
+    else:
+        num_results = len(foldseek_df)
+        logger.info(f"Foldseek found {num_results} hits in total.")
 
     # issue #86 - convert all ~PIPE~ back to |
     foldseek_df["query"] = foldseek_df["query"].str.replace("~PIPE~", "|", regex=False)
@@ -93,6 +101,16 @@ def get_foldfirst_hits(
         foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".pdb", "")
         foldseek_df["cds_id"] = foldseek_df["query"].str.replace(".cif", "")
 
+    # now apply filter to filter out any hits based on poor input, low coverage, or low probability of homology
+    filtered_df = filter_hits(foldseek_df, input_confidence_path, structures, no_plddt)
+    num_filtered_results = len(filtered_df)
+    if num_filtered_results == 0:
+        logger.warning(
+            "After filtering, no hits remain."
+        )
+    else:
+        logger.info(f"After filtering, {num_filtered_results} hits remain.")
+
     # read in the mapping tsv
     foldfirst_annot_mapping_file: Path = Path(database) / f"{database_name}_h"
     with open(foldfirst_annot_mapping_file, "r", encoding = "utf-8-sig") as f:
@@ -104,31 +122,31 @@ def get_foldfirst_hits(
     foldfirst_map = foldfirst_annot_mapping_df.set_index("target")["function"]
 
     # join the dfs using map
-    foldseek_df["target"] = foldseek_df["target"].astype("str")
-    foldseek_df["function"] = foldseek_df["target"].map(foldfirst_map)
+    filtered_df["target"] = filtered_df["target"].astype("str")
+    filtered_df["function"] = filtered_df["target"].map(foldfirst_map)
 
     # filling any possible NaNs
-    foldseek_df["function"] = foldseek_df["function"].fillna("unknown function")
+    filtered_df["function"] = filtered_df["function"].fillna("unknown function")
 
     # clean up pdb/cif suffixes in the target column
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".pdb", "")
-    foldseek_df["target"] = foldseek_df["target"].str.replace(".cif", "")
+    filtered_df["target"] = filtered_df["target"].str.replace(".pdb", "")
+    filtered_df["target"] = filtered_df["target"].str.replace(".cif", "")
 
     if not offline:
         if database_name == "af50m": 
             if uniprot:
                 # parse UniProt identifiers from the target column
-                foldseek_df["uniprot_id"] = foldseek_df.apply(lambda row: get_UniProtID_from_target(row["target"]), axis = 1)
+                filtered_df["uniprot_id"] = filtered_df.apply(lambda row: get_UniProtID_from_target(row["target"]), axis = 1)
                 # create overview of unique UniProt identifiers to limit API calls
-                unique_uniprot_ids_af = foldseek_df["uniprot_id"].unique()
+                unique_uniprot_ids_af = filtered_df["uniprot_id"].unique()
                 uniprot_id_to_name_af = fetch_UniProt_info(unique_uniprot_ids_af)
                 # now add in the fetched information to the df
-                foldseek_df["uniprot_name"] = foldseek_df["uniprot_id"].map(uniprot_id_to_name_af)
+                filtered_df["uniprot_name"] = filtered_df["uniprot_id"].map(uniprot_id_to_name_af)
         elif database_name == "pdb":
             # parse PDB identifiers and chains from the target column
-            foldseek_df[["pdb_id", "chain"]] = foldseek_df.apply(lambda row: get_PDBid_chain_from_target(row["target"]), axis = 1, result_type = "expand")
+            filtered_df[["pdb_id", "chain"]] = filtered_df.apply(lambda row: get_PDBid_chain_from_target(row["target"]), axis = 1, result_type = "expand")
             # create overview of unique PDB identifiers to limit API calls
-            unique_pdb_ids = foldseek_df["pdb_id"].unique()
+            unique_pdb_ids = filtered_df["pdb_id"].unique()
             pdb_to_entities = {}  
             # loop over PDB identifiers and fetch all possible entities
             for pdb_id in unique_pdb_ids:
@@ -145,7 +163,7 @@ def get_foldfirst_hits(
             # loop over PDB identifiers and chains to get the corresponding protein names
             pdb_combo_to_name = {}
             # create overview of unique PDB identifier-chain combinations to limit API calls
-            unique_pdb_combos = foldseek_df[["pdb_id", "chain"]].drop_duplicates().values.tolist()
+            unique_pdb_combos = filtered_df[["pdb_id", "chain"]].drop_duplicates().values.tolist()
             for pdb_id, chain in unique_pdb_combos:
                 entities = pdb_to_entities.get(pdb_id)
                 if entities == "obsolete":
@@ -158,7 +176,7 @@ def get_foldfirst_hits(
                 except Exception as e:
                     logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
                     logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-            foldseek_df["pdb_name"] = foldseek_df.apply(lambda row: pdb_combo_to_name.get((row["pdb_id"], row["chain"])), axis=1)
+            filtered_df["pdb_name"] = filtered_df.apply(lambda row: pdb_combo_to_name.get((row["pdb_id"], row["chain"])), axis=1)
             # loop over PDB entries and fetch UniProt information
             if uniprot:
                 pdb_combo_to_uniprot = {} 
@@ -180,9 +198,9 @@ def get_foldfirst_hits(
                         logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
                         logger.error(f"You can retry with --restart if needed, or without --uniprot.")
                 # now add in the fetched information to the df
-                foldseek_df["uniprot_ids"] = foldseek_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
+                filtered_df["uniprot_ids"] = filtered_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
                 # create overview of unique UniProt identifiers to limit API calls
-                uniprot_ids_pdb = [uniprot_id for uniprot_list in foldseek_df["uniprot_ids"] for uniprot_id in uniprot_list]
+                uniprot_ids_pdb = [uniprot_id for uniprot_list in filtered_df["uniprot_ids"] for uniprot_id in uniprot_list]
                 unique_uniprot_ids_pdb = list(set(uniprot_ids_pdb))
                 # fetch information on the unique UniProt identifiers + deal with obsolete PDB entries / no UniProt connected (eg 7kln A1)
                 unique_uniprot_ids_pdb = [uniprot_id for uniprot_id in unique_uniprot_ids_pdb if uniprot_id not in ["no UniProt entry fetched since PDB obsolete", "no UniProt entry associated"]]
@@ -190,9 +208,9 @@ def get_foldfirst_hits(
                 uniprot_id_to_name_pdb["no UniProt entry fetched since PDB obsolete"] = "WARNING PDB entry is obsolete, no information fetched."
                 uniprot_id_to_name_pdb["no UniProt entry associated"] = "WARNING No UniProt entry associated with this PDB entry, no information fetched."
                 # now add in the fetched information to the df (taking into account there can be multiples)
-                foldseek_df["uniprot_names"] = foldseek_df["uniprot_ids"].apply(lambda ids: [f"{uniprot_id_to_name_pdb.get(uniprot_id)} (UniProt ID: {uniprot_id})" for uniprot_id in ids])
+                filtered_df["uniprot_names"] = filtered_df["uniprot_ids"].apply(lambda ids: [f"{uniprot_id_to_name_pdb.get(uniprot_id)} (UniProt ID: {uniprot_id})" for uniprot_id in ids])
 
-    return foldseek_df
+    return filtered_df
 
 ################################
 # UniProt fetching functions

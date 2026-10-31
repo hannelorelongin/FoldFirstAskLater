@@ -4,14 +4,18 @@
 # Its functions are simply copied from the original Phold custom database functions in https://github.com/gbouras13/phold/blob/main/src/phold/results/topfunction.py.
 
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
 
+from foldfirst.results.shared_parsing import filter_hits
 
 def get_topcustom_hits(
     result_tsv: Path,
+    input_confidence_path: Optional[Path],
     structures: bool,
+    no_plddt: bool,
     proteins_flag: bool,
 ) -> pd.DataFrame:
     """
@@ -19,7 +23,9 @@ def get_topcustom_hits(
 
     Args:
         result_tsv (Path): Path to the Foldseek custom result TSV file.
+        input_confidence_path (Path): Path to the input confidence scores file (pLDDT or prostT5).
         structures (bool): Flag indicating whether structures have been added.
+        no_plddt (bool): Flag indicating protein structures do not have pLDDT values stored in the Bfactor field.
         proteins_flag (bool): Flag indicating whether proteins are used.
 
     Returns:
@@ -42,7 +48,7 @@ def get_topcustom_hits(
         "tLen",
     ]
 
-    # tmscore and lddt computed
+    # prob, tmscore and lddt computed
     if structures:
         col_list += ["prob", "alntmscore", "lddt"]
 
@@ -56,6 +62,10 @@ def get_topcustom_hits(
             "Foldseek found no custom hits whatsoever - please check your custom database and input."
         )
         logger.warning("Fold First Ask Later will continue using only the default databases.")
+    else:
+        num_results = len(foldseek_df)
+        logger.info(f"Foldseek found {num_results} hits in total.")
+
 
     # issue #86 - convert all ~PIPE~ back to |
     foldseek_df["query"] = foldseek_df["query"].str.replace("~PIPE~", "|", regex=False)
@@ -78,8 +88,18 @@ def get_topcustom_hits(
     foldseek_df["target"] = foldseek_df["target"].str.replace(".cif", "")
     # split the target column as this will have phrog:protein
 
-    tophit_custom_df = foldseek_df.loc[
-        foldseek_df.groupby("query")["evalue"].idxmin()
+    # now apply filter to eliminate any hits based on poor input, low coverage, or low probability of homology
+    filtered_df = filter_hits(foldseek_df, input_confidence_path, structures, no_plddt)
+    num_filtered_results = len(filtered_df)
+    if num_filtered_results == 0:
+        logger.warning(
+            "After filtering, no hits remain."
+        )
+    else:
+        logger.info(f"After filtering, {num_filtered_results} hits remain.")
+
+    tophit_custom_df = filtered_df.loc[
+        filtered_df.groupby("query")["evalue"].idxmin()
     ].reset_index(drop=True)
 
     # dont need query or contig_id any more

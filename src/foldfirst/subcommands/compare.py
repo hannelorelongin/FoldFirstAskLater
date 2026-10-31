@@ -14,11 +14,12 @@ from foldfirst.databases.foldfirst_dbs import foldfirst_databases
 from foldfirst.features.create_foldseek_db import (
     generate_foldseek_db_from_aa_3di, generate_foldseek_db_from_structures)
 from foldfirst.features.run_foldseek import create_result_tsv, run_foldseek_search
+from foldfirst.features.extract_plddt import write_plddt_from_structures
 from foldfirst.io.handle_genbank import write_genbank
 from foldfirst.io.sub_db_outputs import create_sub_db_outputs
 from foldfirst.results.phold_parsing import (calculate_topfunctions_results,
-                                       calculate_qcov_tcov,
                                        get_topfunctions)
+from foldfirst.results.shared_parsing import calculate_qcov_tcov
 from foldfirst.results.foldfirst_parsing import get_foldfirst_hits
 from foldfirst.results.custom_parsing import get_topcustom_hits
 from foldfirst.utils.util import replace_pipe_in_fastq
@@ -47,6 +48,7 @@ def subcommand_compare(
     extra_foldseek_params: str,
     custom_db: str,
     foldseek_gpu: bool,
+    no_plddt: bool =  False,
     uniprot: bool = False,
     offline: bool = False,
     restart: bool = False,
@@ -79,6 +81,7 @@ def subcommand_compare(
         extra_foldseek_params (str): Extra foldseek search parameters
         custom_db (str): Custom foldseek database
         foldseek_gpu (bool): Use Foldseek-GPU acceleration and ungappedprefilter
+        no_plddt (bool): Flag indicating protein structures do not have pLDDT values stored in the Bfactor field.
         uniprot (bool): Flag indicating whether to fetch UniProt information.
         offline (bool): Flag indicating whether the script is running in offline mode, not fetching any information through APIs.
         restart (bool): Restart from FoldSeek result tsv files
@@ -100,6 +103,11 @@ def subcommand_compare(
     if structure_dir and structures is False:
         logger.error(
             f"You specified --structure_dir but you did not specify --structures. Please check "
+        )
+
+    if no_plddt and structures is False:
+        logger.error(
+            f"You specified --no_plddt but you did not specify --structures. Please check "
         )
 
     if uniprot and offline:
@@ -267,7 +275,7 @@ def subcommand_compare(
                     f"--filter_structures is {filter_structures}. Therefore only the .pdb or .cif structure files with matching CDS ids will be copied and compared."
                 )
                 filtered_structures_path.mkdir(parents=True, exist_ok=True)
-
+            # create foldseek db from structures
             generate_foldseek_db_from_structures(
                 fasta_aa,
                 foldseek_query_db_path,
@@ -298,6 +306,7 @@ def subcommand_compare(
             logger.error(
                 f"Please choose a different prefix (current prefix:{prefix}) as this conflicts with one of the default database names ({', '.join(forbidden_names)})."
             )
+
 
         #####
         # foldseek search - Phold db
@@ -374,18 +383,36 @@ def subcommand_compare(
 
    # restart
 
-    ######
-    # remove pipe in AA and 3Di FASTA (issue #86)
-    # Won't exist if structures are used
-    ######
-    
+    # define some missing paths for restart
     if not structures:
         fasta_aa: Path = Path(output) / f"{prefix}_aa.fasta"
         fasta_3di: Path = Path(output) / f"{prefix}_3di.fasta"
-
+        # ensure the pipe is replaced in the fasta files for foldseek
         replace_pipe_in_fastq(fasta_aa)
         replace_pipe_in_fastq(fasta_3di)
 
+    # if structures, write the pLDDT scores to file for each structure in the input
+    if structures:
+        # write plddt scores to file for each structure in the input
+        write_plddt_from_structures(
+            fasta_aa, 
+            structure_dir, 
+            Path(output) / f"{prefix}_plddt_mean_scores.csv", 
+            proteins_flag
+        )
+
+    # define path to the confidence scores - either pLDDT or ProstT5 depending on the input type
+            # path to the input confidence scores - either pLDDT or ProstT5 depending on the input type
+    if structures:
+        if no_plddt:
+            input_confidence_path = None
+        else:
+            input_confidence_path = Path(output) / f"{prefix}_plddt_mean_scores.csv"
+    if not structures:
+        if predictions_dir is None:  # if running foldfirst run
+            input_confidence_path = Path(output) / f"{prefix}_prostT5_3di_mean_probabilities.csv"
+        else:
+            input_confidence_path = Path(predictions_dir) / f"{prefix}_prostT5_3di_mean_probabilities.csv"
 
     ########
     # get topfunction
@@ -400,7 +427,7 @@ def subcommand_compare(
         database_name = "all_phold_structures_clustered_searchDB"
 
     filtered_topfunctions_df, weighted_bitscore_df = get_topfunctions(
-        result_tsv, database, database_name, structures, card_vfdb_evalue, proteins_flag
+        result_tsv, database, database_name, input_confidence_path, structures, no_plddt, card_vfdb_evalue, proteins_flag
     )
 
     # update the CDS dictionary with the tophits
@@ -514,7 +541,7 @@ def subcommand_compare(
                     and row["tCov"] > 0.8
                     and (row["fident"] > 0.3 or float(row["evalue"]) < 1e-10)
                 ):
-                    return "high"
+                    return "high" 
                 elif (row["qCov"] > 0.8 or row["tCov"] > 0.8) and (
                     row["fident"] > 0.3 or float(row["evalue"]) < 1e-5
                 ):
@@ -577,7 +604,7 @@ def subcommand_compare(
         result_tsv_foldfirst: Path = Path(output) / f"foldseek_results_{foldfirst_db_name}.tsv"
         # parse the FoldSeek results tsv
         hit_foldfirst_df = get_foldfirst_hits(
-                result_tsv_foldfirst, database, foldfirst_db_name, structures, proteins_flag, uniprot, offline
+                result_tsv_foldfirst, database, foldfirst_db_name, input_confidence_path, structures, no_plddt, proteins_flag, uniprot, offline
             )
         # write output
         hit_foldfirst_path: Path = Path(output) / f"{foldfirst_db_name}_database_hits.tsv"
@@ -629,7 +656,7 @@ def subcommand_compare(
         )
 
         tophit_custom_df = get_topcustom_hits(
-            result_tsv_custom, structures, proteins_flag
+            result_tsv_custom, input_confidence_path, structures, no_plddt, proteins_flag
         )
 
         #### merge
