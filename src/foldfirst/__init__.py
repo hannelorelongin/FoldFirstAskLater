@@ -218,6 +218,11 @@ def compare_options(func):
                     help="Use this to disable filtering on pLDDT scores for structure-based searches. This is useful if your structures do not have pLDDT values stored in the Bfactor field.",
                 ),
         click.option(
+            "--binary_class",
+            is_flag=True,
+            help="Use this to classify annotations as either informative or uninformative, rather than using a three-level classification (informative, low informative, and uninformative).",
+        ),
+        click.option(
             "--uniprot",
             is_flag=True,
             help="Use this to fetch up-to-date protein information from UniProt",
@@ -300,6 +305,7 @@ def run(
     no_plddt,
     uniprot,
     offline,
+    binary_class,
     restart,
     **kwargs,
 ):
@@ -341,6 +347,7 @@ def run(
         "--no_plddt": no_plddt,
         "--uniprot": uniprot,
         "--offline": offline,
+        "--binary_class": binary_class,
         "--restart": restart
     }
 
@@ -439,6 +446,7 @@ def run(
         no_plddt=no_plddt,
         uniprot=uniprot,
         offline=offline,
+        binary_class=binary_class,
         restart=restart
     )
 
@@ -645,6 +653,7 @@ def compare(
     no_plddt,
     uniprot,
     offline,
+    binary_class,
     restart,
     **kwargs,
 ):
@@ -681,6 +690,7 @@ def compare(
         "--no_plddt": no_plddt,
         "--uniprot": uniprot,
         "--offline": offline,
+        "--binary_class": binary_class,
         "--restart": restart
     }
 
@@ -722,6 +732,7 @@ def compare(
         no_plddt=no_plddt,
         uniprot=uniprot,
         offline=offline,
+        binary_class=binary_class,
         restart=restart
     )
 
@@ -960,6 +971,7 @@ def proteins_compare(
     no_plddt,
     uniprot,
     offline,
+    binary_class,
     restart,
     **kwargs
 ):
@@ -995,6 +1007,7 @@ def proteins_compare(
         "--no_plddt": no_plddt,
         "--uniprot": uniprot,
         "--offline": offline,
+        "--binary_class": binary_class,
         "--restart": restart
     }
 
@@ -1066,6 +1079,7 @@ def proteins_compare(
         no_plddt=no_plddt,
         uniprot=uniprot,
         offline=offline,
+        binary_class=binary_class,
         restart=restart
     )
 
@@ -1114,6 +1128,7 @@ def remote(
     custom_db,
     no_plddt,
     uniprot,
+    binary_class,
     **kwargs,
 ):
     """Uses Foldseek API to run ProstT5 then Foldseek locally"""
@@ -1142,6 +1157,7 @@ def remote(
         "--custom_db": custom_db,
         "--no_plddt": no_plddt,
         "--uniprot": uniprot,
+        "--binary_class": binary_class
     }
 
     # initial logging etc
@@ -1224,6 +1240,7 @@ def remote(
         no_plddt=no_plddt,
         uniprot=uniprot,
         offline=False, # doesn't make sense for remote to not query APIs when you are doing API calls already
+        binary_class=binary_class,
         foldseek_gpu=False,  # doesn't make sense for remote to do this as you wouldn't probably have a GPU
     )
 

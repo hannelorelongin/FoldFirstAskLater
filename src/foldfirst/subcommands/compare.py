@@ -51,6 +51,7 @@ def subcommand_compare(
     no_plddt: bool =  False,
     uniprot: bool = False,
     offline: bool = False,
+    binary_class: bool = False,
     restart: bool = False,
     clustered_db=False # always False - keep the code for compatibility if I ever revert later, but clustered DBs were not better
 
@@ -604,7 +605,7 @@ def subcommand_compare(
         result_tsv_foldfirst: Path = Path(output) / f"foldseek_results_{foldfirst_db_name}.tsv"
         # parse the FoldSeek results tsv
         hit_foldfirst_df = get_foldfirst_hits(
-                result_tsv_foldfirst, database, foldfirst_db_name, input_confidence_path, structures, no_plddt, proteins_flag, uniprot, offline
+                result_tsv_foldfirst, database, foldfirst_db_name, input_confidence_path, structures, no_plddt, proteins_flag, uniprot, offline, binary_class
             )
         # write output
         hit_foldfirst_path: Path = Path(output) / f"{foldfirst_db_name}_database_hits.tsv"

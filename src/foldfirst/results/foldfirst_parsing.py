@@ -16,6 +16,7 @@ import Bio
 from Bio.PDB import *
 
 from foldfirst.results.shared_parsing import filter_hits
+from foldfirst.results.foldfirst_classification import is_uninformative, is_informative_tt
 
 # settings for request
 sess = requests.Session()
@@ -35,6 +36,7 @@ def get_foldfirst_hits(
     proteins_flag: bool,
     uniprot: bool,
     offline: bool,
+    binary_class: bool,
 ) -> pd.DataFrame:
     """
     Process Foldseek output to extract top hits for custom searches
@@ -132,6 +134,14 @@ def get_foldfirst_hits(
     filtered_df["target"] = filtered_df["target"].str.replace(".pdb", "")
     filtered_df["target"] = filtered_df["target"].str.replace(".cif", "")
 
+    # classify uninformative annotations
+    if database_name not in ["pdb"]:
+        if binary_class:
+            filtered_df["informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["function"]), axis=1)
+        else:
+            filtered_df["informativeness"] = filtered_df.apply(lambda row: is_informative_tt(row["function"]), axis=1)
+        
+
     if not offline:
         if database_name == "af50m": 
             if uniprot:
@@ -142,6 +152,10 @@ def get_foldfirst_hits(
                 uniprot_id_to_name_af = fetch_UniProt_info(unique_uniprot_ids_af)
                 # now add in the fetched information to the df
                 filtered_df["uniprot_name"] = filtered_df["uniprot_id"].map(uniprot_id_to_name_af)
+                if binary_class:
+                    filtered_df["uniprot_informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["uniprot_name"]), axis=1)
+                else:
+                    filtered_df["uniprot_informativeness"] = filtered_df.apply(lambda row: is_informative_tt(row["uniprot_name"]), axis=1)
         elif database_name == "pdb":
             # parse PDB identifiers and chains from the target column
             filtered_df[["pdb_id", "chain"]] = filtered_df.apply(lambda row: get_PDBid_chain_from_target(row["target"]), axis = 1, result_type = "expand")
@@ -177,6 +191,10 @@ def get_foldfirst_hits(
                     logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
                     logger.error(f"You can retry with --restart if needed, or without --uniprot.")
             filtered_df["pdb_name"] = filtered_df.apply(lambda row: pdb_combo_to_name.get((row["pdb_id"], row["chain"])), axis=1)
+            if binary_class:
+                filtered_df["informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["pdb_name"]), axis=1)
+            else:
+                filtered_df["informativeness"] = filtered_df.apply(lambda row: is_informative_tt(row["pdb_name"]), axis=1)
             # loop over PDB entries and fetch UniProt information
             if uniprot:
                 pdb_combo_to_uniprot = {} 
@@ -198,17 +216,21 @@ def get_foldfirst_hits(
                         logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
                         logger.error(f"You can retry with --restart if needed, or without --uniprot.")
                 # now add in the fetched information to the df
-                filtered_df["uniprot_ids"] = filtered_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
+                filtered_df["uniprot_id"] = filtered_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
+                filtered_df = filtered_df.explode("uniprot_id")  # explode the list of UniProt IDs into separate rows
                 # create overview of unique UniProt identifiers to limit API calls
-                uniprot_ids_pdb = [uniprot_id for uniprot_list in filtered_df["uniprot_ids"] for uniprot_id in uniprot_list]
-                unique_uniprot_ids_pdb = list(set(uniprot_ids_pdb))
+                unique_uniprot_ids_pdb = filtered_df["uniprot_id"].unique()
                 # fetch information on the unique UniProt identifiers + deal with obsolete PDB entries / no UniProt connected (eg 7kln A1)
                 unique_uniprot_ids_pdb = [uniprot_id for uniprot_id in unique_uniprot_ids_pdb if uniprot_id not in ["no UniProt entry fetched since PDB obsolete", "no UniProt entry associated"]]
                 uniprot_id_to_name_pdb = fetch_UniProt_info(unique_uniprot_ids_pdb)
                 uniprot_id_to_name_pdb["no UniProt entry fetched since PDB obsolete"] = "WARNING PDB entry is obsolete, no information fetched."
                 uniprot_id_to_name_pdb["no UniProt entry associated"] = "WARNING No UniProt entry associated with this PDB entry, no information fetched."
-                # now add in the fetched information to the df (taking into account there can be multiples)
-                filtered_df["uniprot_names"] = filtered_df["uniprot_ids"].apply(lambda ids: [f"{uniprot_id_to_name_pdb.get(uniprot_id)} (UniProt ID: {uniprot_id})" for uniprot_id in ids])
+                # now add in the fetched information to the df
+                filtered_df["uniprot_name"] = filtered_df.apply(lambda row: uniprot_id_to_name_pdb.get(row["uniprot_id"]), axis = 1)
+                if binary_class:
+                    filtered_df["uniprot_informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["uniprot_name"]), axis=1)
+                else:
+                    filtered_df["uniprot_informativeness"] = filtered_df.apply(lambda row: is_informative_tt(row["uniprot_name"]), axis=1)
 
     return filtered_df
 
