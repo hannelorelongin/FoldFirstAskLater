@@ -6,8 +6,11 @@ Fold First, Ask Later is currently under development, and should be used with ca
 
 This branch currently expands Phold by:
 * code support for FoldSeek database installs, and default installation of PDB and AlphaFold database (UniProt50, minimal version)
-* code support for FoldSeek searches against the PDB and AlphaFold database by default (no processing of hits yet)
+* code support for FoldSeek searches against the PDB and AlphaFold database by default
+* code support filtering the FoldSeek hits based on input quality (pLDDT >= 50, 3Di probability >= 30), coverage of query and target (>= 0.8) and SCOPe probability (>= 0.5) by default
 * code support for PDB (default enabled, can be disabled with --offline) and UniProt API calls (with tag --uniprot) to add additional protein information to search results from searches against the PDB and AlphaFold database 
+* code support for classification of protein annotations, either binary (informative vs. uninformative, default disabled, can be enabled with --binary_class) or using three levels (informative vs. low informative vs. uninformative, default enabled)
+
 
 ## Installation
 
@@ -160,6 +163,15 @@ Options:
   --custom_db TEXT               Path to custom database
   --foldseek_gpu                 Use this to enable compatibility with
                                  FoldSeek-GPU search acceleration
+  --no_plddt                     Use this to disable filtering on pLDDT scores
+                                 for structure-based searches. This is useful
+                                 if your structures do not have pLDDT values
+                                 stored in the Bfactor field.
+  --binary_class                 Use this to classify annotations as either
+                                 informative or uninformative, rather than
+                                 using a three-level classification
+                                 (informative, low informative, and
+                                 uninformative).
   --uniprot                      Use this to fetch up-to-date protein
                                  information from UniProt
   --offline                      Use this to run foldfirst in offline mode,
