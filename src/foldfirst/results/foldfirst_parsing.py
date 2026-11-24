@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 
+#test
+
 # New script to deal with searching Fold First Ask Later specific databases and parsing their results.
 # This code currently only works on the Alphafold and PDB databases, but can be easily extended to other FoldSeek databases in the future if needed.
 # Its functions are inspired by the original Phold functions, but strongly deviate in the parsing.
 
 import json
+import re
 import requests
 import time
 import pandas as pd
 from loguru import logger
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import Bio
 from Bio.PDB import *
 
 from foldfirst.results.shared_parsing import filter_hits
 from foldfirst.results.foldfirst_classification import is_uninformative, is_informative_tt
+
+# set batch size for API calls (to avoid too many requests at once)
+UNIPROT_BATCH_SIZE = 100
 
 # settings for request
 sess = requests.Session()
@@ -245,50 +251,88 @@ def get_UniProtID_from_target(target):
 
 # fetch information from UniProt for a list of UniProt identifiers
 def fetch_UniProt_info(uniprot_ids):
+    """
+    Fetches protein names from UniProt for a list of UniProt identifiers.
+
+    Args:
+        uniprot_ids (List[str]): A deduplicated list of uniprot identifiers
+
+    Returns:
+        Dict[str, str]: A dictionary mapping UniProt IDs to protein names.
+    """
     # dict to store mapping of UniProt ID to protein name
     uniprot_id_to_name = {}
-    # add in a progress logger
+    # count the total number of UniProt identifiers to process
     total_ids = len(uniprot_ids)
+     # add in a progress logger
     logger.info(f"Fetching protein names for {total_ids} unique UniProt identifiers.")
     start_time = time.time()
-    last_logged_percent = 0
-    # loop over entries and fetch
-    for i, uniprot_id in enumerate(uniprot_ids):
+    processed = 0
+    # only log every 2 minutes
+    log_interval_seconds = 120
+    last_log_time = start_time
+    # Iterate over the batches to retrieve UniProt information
+    for batch_start in range(0, total_ids, UNIPROT_BATCH_SIZE):
+        # get the current batch of UniProt IDs
+        batch_ids = uniprot_ids[batch_start:batch_start + UNIPROT_BATCH_SIZE]
+        # fetch protein names for the current batch of UniProt IDs
         try:
-            protein_name = get_protein_name_string(uniprot_id)
-            uniprot_id_to_name[uniprot_id] = protein_name
+            batch_id_to_name = get_protein_names_string(batch_ids)
         except Exception as e:
             logger.error(f"Failed to fetch protein name from UniProt due to the following error: {e}.")
-            logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-        # update logger every 10% of progress
-        current_percent = int(((i + 1) / total_ids) * 100)
-        if current_percent >= last_logged_percent + 10:
-            elapsed = time.time() - start_time
-            remaining = total_ids - (i + 1)
-            if i + 1 > 0:  # Avoid division by zero
-                rate = (i + 1) / elapsed
-                eta_seconds = remaining / rate
-                eta_str = f"{int(eta_seconds // 60)}m {int(eta_seconds % 60)}s" if eta_seconds < 3600 else f"{int(eta_seconds // 3600)}h {int((eta_seconds % 3600) // 60)}m"
-            else:
-                eta_str = "unknown"
-            logger.info(f"UniProt fetching progress: {current_percent}% complete ({i + 1} of {total_ids} IDs - ETA: {eta_str}).")
-            last_logged_percent = current_percent
+            logger.error("You can retry with --restart if needed, or without --uniprot.")
+        # add to the overall dictionary 
+        uniprot_id_to_name.update(batch_id_to_name)
+        # update the logging progress
+        processed += len(batch_ids)
+        current_time = time.time()
+        if current_time - last_log_time >= log_interval_seconds:
+            elapsed = current_time - start_time
+            remaining = total_ids - processed
+            rate = processed / elapsed if elapsed > 0 else 0
+            eta_seconds = remaining / rate if rate > 0 else 0
+            eta_str = time.strftime("%H:%M:%S", time.gmtime(eta_seconds))
+            percent_done = (processed / total_ids * 100) if total_ids else 100
+            logger.info(f"UniProt fetching progress: {processed} of {total_ids} IDs processed ({percent_done:.1f}%) - ETA: {eta_str}.")
+            last_log_time = current_time
     logger.info(f"Completed fetching protein names from UniProt.")
     return uniprot_id_to_name
 
 # get protein name, for a single UniProt ID
-def get_protein_name_string(uniprot_id):
-    # note: unsure if protein_name is a required field, if we get errors, look into this!
-    url = f"https://rest.uniprot.org/uniprotkb/search?query={uniprot_id}&fields=protein_name&format=tsv"
+def get_protein_names_string(uniprot_ids: list[str]) -> Dict[str,str]: 
+    if not uniprot_ids:
+        return {}
+
+    # create query string for multiple UniProt IDs
+    query = " OR ".join(f"accession:{uniprot_id}" for uniprot_id in uniprot_ids)
+    url = f"https://rest.uniprot.org/uniprotkb/search?query={query}&fields=accession,protein_name&format=tsv&size={UNIPROT_BATCH_SIZE}"
     r = sess.get(url)
-    r.raise_for_status()
-    content = r.text
-    names = content.split("\n")[1:-1]
-    # if the UniProt entry was marked as obsolete, access its UniParc accession
-    if "deleted" in names:
-        return "WARNING UniProt entry is obsolete, no information fetched."
-    else:
-        return ";".join([str(name) for name in names])
+    try:
+        r.raise_for_status()
+    except requests.exceptions.HTTPError:
+        if r.status_code == 400:
+            invalid_ids = [
+                quoted[1]
+                for line in r.text.splitlines()[1:]
+                if len(quoted := re.findall(r"'([^']*)'", line)) >= 2
+            ]
+            valid_ids = [uniprot_id for uniprot_id in uniprot_ids if uniprot_id not in invalid_ids]
+            ids_to_names = get_protein_names_string(valid_ids)
+            ids_to_names.update({invalid_id: "IDENTIFIER NOT FOUND IN UNIPROT" for invalid_id in invalid_ids})
+            # TODO: should these be logged to the user?
+            return ids_to_names
+        raise
+
+    lines = r.text.splitlines()
+    ids_to_names = {}
+    for line in lines[1:]:  # Skip the header line
+        accession, names = line.split("\t")
+        # if the UniProt entry was marked as obsolete, access its UniParc accession
+        if "deleted" in names:
+            ids_to_names[accession] = "WARNING UniProt entry is obsolete, no information fetched."
+        else:
+            ids_to_names[accession] = names
+    return ids_to_names 
 
 ################################
 # PDB fetching functions
@@ -347,6 +391,3 @@ def get_UniProt_from_PDB_entity(pdb_id, entity):
     r.raise_for_status()
     data = json.loads(r.text)
     return data["rcsb_polymer_entity_container_identifiers"].get("uniprot_ids")
-
-
-

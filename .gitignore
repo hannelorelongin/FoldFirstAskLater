@@ -50,6 +50,9 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
+# test data
+tests/*.tsv
+
 # Translations
 *.mo
 *.pot
@@ -112,3 +115,4 @@ ENV/
 .DS_Store
 */.DS_Store
 */*/.DS_Store
+

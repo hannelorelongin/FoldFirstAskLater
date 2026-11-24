@@ -73,6 +73,9 @@ exe = [
     "build",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.setuptools]
 include-package-data = true
 zip-safe = true  # This just means it's safe to zip up the bdist
