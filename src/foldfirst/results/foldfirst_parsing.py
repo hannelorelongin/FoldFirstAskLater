@@ -281,6 +281,8 @@ def fetch_UniProt_info(uniprot_ids):
         except Exception as e:
             logger.error(f"Failed to fetch protein name from UniProt due to the following error: {e}.")
             logger.error("You can retry with --restart if needed, or without --uniprot.")
+            batch_id_to_name = {uniprot_id: "ERROR FETCHING PROTEIN NAME FROM UNIPROT" for uniprot_id in batch_ids}
+            # TODO: is this the desired behaviour or should the execution stop?
         # add to the overall dictionary 
         uniprot_id_to_name.update(batch_id_to_name)
         # update the logging progress
