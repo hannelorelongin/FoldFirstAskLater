@@ -5,6 +5,7 @@
 # Its functions are inspired by the original Phold functions, but strongly deviate in the parsing.
 
 import json
+from urllib import response
 import requests
 import time
 import pandas as pd
@@ -161,36 +162,16 @@ def get_foldfirst_hits(
             filtered_df[["pdb_id", "chain"]] = filtered_df.apply(lambda row: get_PDBid_chain_from_target(row["target"]), axis = 1, result_type = "expand")
             # create overview of unique PDB identifiers to limit API calls
             unique_pdb_ids = filtered_df["pdb_id"].unique()
-            pdb_to_entities = {}  
-            # loop over PDB identifiers and fetch all possible entities
-            for pdb_id in unique_pdb_ids:
-                if not check_PDBid_active(pdb_id, obsolete_ids):
-                    logger.warning(f"PDB ID {pdb_id} is obsolete, hence, no information will be fetched for this entry.")
-                    pdb_to_entities[pdb_id] = "obsolete"
-                    continue
-                try:
-                    entities = get_PDB_entities_from_entry(pdb_id)
-                    pdb_to_entities[pdb_id] = entities
-                except Exception as e:
-                        logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
-                        logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-            # loop over PDB identifiers and chains to get the corresponding protein names
-            pdb_combo_to_name = {}
-            # create overview of unique PDB identifier-chain combinations to limit API calls
-            unique_pdb_combos = filtered_df[["pdb_id", "chain"]].drop_duplicates().values.tolist()
-            for pdb_id, chain in unique_pdb_combos:
-                entities = pdb_to_entities.get(pdb_id)
-                if entities == "obsolete":
-                    pdb_combo_to_name[(pdb_id, chain)] = "WARNING PDB entry is obsolete, no information fetched."
-                    continue
-                try:
-                    entity = get_PDB_entity_with_chain(entities, pdb_id, chain)
-                    protein_name = get_protein_name_from_PDB_entity(pdb_id, entity)
-                    pdb_combo_to_name[(pdb_id, chain)] = protein_name
-                except Exception as e:
-                    logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
-                    logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-            filtered_df["pdb_name"] = filtered_df.apply(lambda row: pdb_combo_to_name.get((row["pdb_id"], row["chain"])), axis=1)
+            # handle obsolete PDB identifiers first
+            filtered_df["pdb_name"] = filtered_df.apply(
+                lambda row: "WARNING PDB entry is obsolete, no information fetched." 
+                if row["pdb_id"] in obsolete_ids 
+                else None, 
+                axis=1
+            )
+            # fetch the names for the active PDB identifiers
+            pdb_to_chains_and_names = get_pdb_names([pdb_id for pdb_id in unique_pdb_ids if pdb_id not in obsolete_ids])
+            filtered_df["pdb_name"] = filtered_df.apply(lambda row: get_pdb_and_chain_name(pdb_to_chains_and_names, row["pdb_id"], row["chain"]), axis=1)
             if binary_class:
                 filtered_df["informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["pdb_name"]), axis=1)
             else:
@@ -300,53 +281,98 @@ def get_PDBid_chain_from_target(target):
     chain = target.split("_")[-1]
     return pdb_id, chain
 
-# check if PDB ID is obsolete
-def check_PDBid_active(pdb_id, obsolete_list):
-    if pdb_id.upper() in obsolete_list:
-        return False
-    else:
-        return True
-
-# from PDB ID, get all PDB polymer entities
-def get_PDB_entities_from_entry(pdb_id):
-    url = f"https://data.rcsb.org/rest/v1/core/entry/{pdb_id}"
-    r = sess.get(url)
+def query_pdb_graphql(pdb_ids: list[str]) -> dict:
+    URL = "https://data.rcsb.org/graphql"
+    QUERY = """
+    query ($ids: [String!]!) {
+    entries(entry_ids: $ids) {
+        rcsb_id
+        polymer_entities {
+        rcsb_polymer_entity { pdbx_description }
+        rcsb_polymer_entity_container_identifiers { auth_asym_ids asym_ids }
+        }
+    }
+    }"""
+    r = requests.post(URL, json={"query": QUERY, "variables": {"ids": ids[i:i+chunk]}}, timeout=60)
     r.raise_for_status()
-    data = json.loads(r.text)
-    return data["rcsb_entry_container_identifiers"].get("polymer_entity_ids")
+    return r.json()
 
-# match PDB entity to protein chain
-def get_PDB_entity_with_chain(entity_ids, pdb_id, chain):
-    for entity in entity_ids:
-        url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id}/{entity}"
-        r = sess.get(url)
-        r.raise_for_status()
-        data = json.loads(r.text)
-        # deal with chain of the format A-1 
-        # appears to happen for cases where authors reused chain identifiers (e.g. for a protein and a small molecule, e.g. 7qfn A-2)
-        if "-" in chain:
-            chain = chain.split("-")[0]
-        # assumption: FoldSeek gives author chain naming, not PDB renamed chain names
-        if chain in data["rcsb_polymer_entity_container_identifiers"].get("auth_asym_ids"):
-            return entity
-        else:
+def parse_graphql_json(response_json: dict) -> dict[str, dict[str, str]]:
+    """Extract PDB chain identifiers and polymer descriptions from a response.
+
+    Reads entries from the GraphQL response's ``data.entries`` field and
+    builds a mapping from each entry's RCSB PDB ID to its author chain IDs and
+    corresponding polymer descriptions. Entries without an RCSB ID are
+    ignored.
+
+    Args:
+        response_json: Decoded JSON response from the RCSB GraphQL API.
+
+    Returns:
+        A dictionary mapping PDB IDs to dictionaries of chain IDs and polymer
+        descriptions. Returns an empty dictionary if there are no usable
+        entries.
+    """
+    pdb_to_chains_and_names = {}
+    for entry in response_json.get("data", {}).get("entries", []):
+        pdb_id = entry.get("rcsb_id")
+        if not pdb_id:
             continue
+        chains_and_names = {}
+        for entity in entry.get("polymer_entities", []):
+            description = entity.get("rcsb_polymer_entity", {}).get("pdbx_description")
+            auth_asym_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
+            for chain in auth_asym_ids:
+                chains_and_names[chain] = description
+        pdb_to_chains_and_names[pdb_id] = chains_and_names
+    return pdb_to_chains_and_names
 
-# get protein name based on the PDB ID and entity 
-def get_protein_name_from_PDB_entity(pdb_id, entity):
-    url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id}/{entity}"
-    r = sess.get(url)
-    r.raise_for_status()
-    data = json.loads(r.text)
-    return data["rcsb_polymer_entity"].get("pdbx_description")
+def get_pdb_names(pdb_ids: list[str]) -> dict:
+    """
+    Fetches polymer descriptions for a list of PDB IDs using the RCSB GraphQL API.
 
-# get UniProt ID based on the PDB ID and entity 
-def get_UniProt_from_PDB_entity(pdb_id, entity):
-    url = f"https://data.rcsb.org/rest/v1/core/polymer_entity/{pdb_id}/{entity}"
-    r = sess.get(url)
-    r.raise_for_status()
-    data = json.loads(r.text)
-    return data["rcsb_polymer_entity_container_identifiers"].get("uniprot_ids")
+    Args:
+        pdb_ids (list[str]): List of active PDB IDs.
+
+    Returns:
+        dict[str, dict[str, str]]: A dictionary mapping PDB IDs to dictionaries of chain IDs and polymer descriptions.
+    """
+    # handle obsolete PDB identifiers first
+    obsolete_ids_in_list = [pdb_id for pdb_id in pdb_ids if pdb_id in obsolete_ids]
+    if obsolete_ids_in_list:
+        logger.warning(f"The following PDB IDs are obsolete and will be skipped: {', '.join(obsolete_ids_in_list)}")
+        pdb_ids = [pdb_id for pdb_id in pdb_ids if pdb_id not in obsolete_ids]
+    chunk = 100  # Number of PDB IDs to query at once
+    pdb_to_chains_and_names = {}
+    for i in range(0, len(pdb_ids), chunk):
+        try:
+            response_json = query_pdb_graphql(pdb_ids[i:i+chunk])
+            pdb_to_chains_and_names.update(parse_graphql_json(response_json))
+        except Exception as e:
+                logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
+                logger.error("You can retry with --restart if needed, or without --uniprot.")
+    return pdb_to_chains_and_names
+
+def get_pdb_and_chain_name(pdb_to_chains_and_names: dict, pdb_id: str, chain: str) -> Optional[str]:
+    """
+    Retrieves the polymer description for a specific PDB ID and chain.
+
+    Args:
+        pdb_to_chains_and_names (dict): A dictionary mapping PDB IDs to dictionaries of chain IDs and polymer descriptions.
+        pdb_id (str): The PDB ID to look up.
+        chain (str): The chain ID to look up.
+
+    Returns:
+        Optional[str]: The polymer description if found, otherwise None.
+    """
+    chains_and_names = pdb_to_chains_and_names.get(pdb_id)
+    if chains_and_names is None:
+        logger.warning(f"No information found for PDB ID {pdb_id}.")
+        return None
+    name = chains_and_names.get(chain)
+    if name is None:
+        logger.warning(f"No information found for PDB ID {pdb_id} chain {chain}.")
+    return name
 
 
 
