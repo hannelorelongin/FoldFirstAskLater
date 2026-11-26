@@ -169,35 +169,15 @@ def get_foldfirst_hits(
                 else None, 
                 axis=1
             )
-            # fetch the names for the active PDB identifiers
+            # fetch the names and uniprot IDs for the active PDB identifiers
             pdb_to_chains_and_names = get_pdb_names([pdb_id for pdb_id in unique_pdb_ids if pdb_id not in obsolete_ids])
-            filtered_df["pdb_name"] = filtered_df.apply(lambda row: get_pdb_and_chain_name(pdb_to_chains_and_names, row["pdb_id"], row["chain"]), axis=1)
+            filtered_df[["pdb_name", "uniprot_ids"]] = filtered_df.apply(lambda row: get_pdb_and_chain_name_and_uniprot(pdb_to_chains_and_names, row["pdb_id"], row["chain"]), axis=1, result_type="expand")
             if binary_class:
                 filtered_df["informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["pdb_name"]), axis=1)
             else:
                 filtered_df["informativeness"] = filtered_df.apply(lambda row: is_informative_tt(row["pdb_name"]), axis=1)
-            # loop over PDB entries and fetch UniProt information
+            # Fetch UniProt information
             if uniprot:
-                pdb_combo_to_uniprot = {} 
-                # loop over PDB entries and fetch uniprot identifiers
-                for pdb_id, chain in unique_pdb_combos:
-                    entities = pdb_to_entities.get(pdb_id)
-                    if entities == "obsolete":
-                        pdb_combo_to_uniprot[(pdb_id, chain)] = ["no UniProt entry fetched since PDB obsolete"]
-                        continue
-                    try:
-                        entity = get_PDB_entity_with_chain(entities, pdb_id, chain)
-                        uniprot_ids = get_UniProt_from_PDB_entity(pdb_id, entity)
-                        if uniprot_ids is None:
-                            logger.warning(f"No UniProt entry associated with PDB ID {pdb_id} chain {chain}, hence, no information will be fetched for this entry.")
-                            pdb_combo_to_uniprot[(pdb_id, chain)] = ["no UniProt entry associated"]
-                        else:
-                            pdb_combo_to_uniprot[(pdb_id, chain)] = uniprot_ids
-                    except Exception as e:
-                        logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
-                        logger.error(f"You can retry with --restart if needed, or without --uniprot.")
-                # now add in the fetched information to the df
-                filtered_df["uniprot_id"] = filtered_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
                 filtered_df = filtered_df.explode("uniprot_id")  # explode the list of UniProt IDs into separate rows
                 # create overview of unique UniProt identifiers to limit API calls
                 unique_uniprot_ids_pdb = filtered_df["uniprot_id"].unique()
@@ -289,7 +269,7 @@ def query_pdb_graphql(pdb_ids: list[str]) -> dict:
         rcsb_id
         polymer_entities {
         rcsb_polymer_entity { pdbx_description }
-        rcsb_polymer_entity_container_identifiers { auth_asym_ids asym_ids }
+        rcsb_polymer_entity_container_identifiers { auth_asym_ids asym_ids uniprot_ids}
         }
     }
     }"""
@@ -312,6 +292,7 @@ def parse_graphql_json(response_json: dict) -> dict[str, dict[str, str]]:
         A dictionary mapping PDB IDs to dictionaries of chain IDs and polymer
         descriptions. Returns an empty dictionary if there are no usable
         entries.
+        {pdb id: {chain id: {'description': polymer description, 'uniprot_ids': [list of uniprot ids]}}}
     """
     pdb_to_chains_and_names = {}
     for entry in response_json.get("data", {}).get("entries", []):
@@ -322,8 +303,9 @@ def parse_graphql_json(response_json: dict) -> dict[str, dict[str, str]]:
         for entity in entry.get("polymer_entities", []):
             description = entity.get("rcsb_polymer_entity", {}).get("pdbx_description")
             auth_asym_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
+            uniprot_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("uniprot_ids", [])
             for chain in auth_asym_ids:
-                chains_and_names[chain] = description
+                chains_and_names[chain] = {'description': description, 'uniprot_ids': uniprot_ids}
         pdb_to_chains_and_names[pdb_id] = chains_and_names
     return pdb_to_chains_and_names
 
@@ -353,7 +335,7 @@ def get_pdb_names(pdb_ids: list[str]) -> dict:
                 logger.error("You can retry with --restart if needed, or without --uniprot.")
     return pdb_to_chains_and_names
 
-def get_pdb_and_chain_name(pdb_to_chains_and_names: dict, pdb_id: str, chain: str) -> Optional[str]:
+def get_pdb_and_chain_name_and_uniprot(pdb_to_chains_and_names: dict, pdb_id: str, chain: str) -> tuple[Optional[str], Optional[list[str]]]:
     """
     Retrieves the polymer description for a specific PDB ID and chain.
 
@@ -369,10 +351,14 @@ def get_pdb_and_chain_name(pdb_to_chains_and_names: dict, pdb_id: str, chain: st
     if chains_and_names is None:
         logger.warning(f"No information found for PDB ID {pdb_id}.")
         return None
-    name = chains_and_names.get(chain)
+    name = chains_and_names.get(chain, {}).get('description')
+    uniprot_ids = chains_and_names.get(chain, {}).get('uniprot_ids')
     if name is None:
         logger.warning(f"No information found for PDB ID {pdb_id} chain {chain}.")
-    return name
+    if uniprot_ids is None:
+        logger.warning(f"No UniProt entry associated with PDB ID {pdb_id} chain {chain}, hence, no information will be fetched for this entry.")
+        uniprot_ids = ["no UniProt entry associated"]
+    return name, uniprot_ids
 
 
 
