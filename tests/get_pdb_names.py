@@ -10,12 +10,14 @@ import pandas as pd
 from loguru import logger
 
 from foldfirst.results.foldfirst_parsing import (
+    get_UniProt_from_PDB_entity,
     obsolete_ids,
     get_PDBid_chain_from_target,
-    is_PDBid_active,
+    check_PDBid_active,
     get_PDB_entities_from_entry,
     get_PDB_entity_with_chain,
     get_protein_name_from_PDB_entity,
+    fetch_UniProt_info
 )
 
 HERE = Path(__file__).resolve().parent
@@ -42,7 +44,7 @@ logger.info(f"Found {len(unique_pdb_ids)} unique PDB IDs.")
 pdb_to_entities = {}
 # loop over PDB identifiers and fetch all possible entities
 for pdb_id in unique_pdb_ids:
-    if not is_PDBid_active(pdb_id, obsolete_ids):
+    if not check_PDBid_active(pdb_id, obsolete_ids):
         logger.warning(f"PDB ID {pdb_id} is obsolete, hence, no information will be fetched for this entry.")
         pdb_to_entities[pdb_id] = "obsolete"
         continue
@@ -69,10 +71,34 @@ for pdb_id, chain in unique_pdb_combos:
         logger.error(f"[{pdb_id} chain {chain}] Failed to fetch protein name from PDB: {e!r}")
 filtered_df["pdb_name"] = filtered_df.apply(lambda row: pdb_combo_to_name.get((row["pdb_id"], row["chain"])), axis=1)
 
+# Loop over PDB entries and fetch uniprot identifiers
+pdb_combo_to_uniprot = {} 
+# loop over PDB entries and fetch uniprot identifiers
+for pdb_id, chain in unique_pdb_combos:
+    entities = pdb_to_entities.get(pdb_id)
+    if entities == "obsolete":
+        pdb_combo_to_uniprot[(pdb_id, chain)] = ["no UniProt entry fetched since PDB obsolete"]
+        continue
+    try:
+        entity = get_PDB_entity_with_chain(entities, pdb_id, chain)
+        uniprot_ids = get_UniProt_from_PDB_entity(pdb_id, entity)
+        if uniprot_ids is None:
+            logger.warning(f"No UniProt entry associated with PDB ID {pdb_id} chain {chain}, hence, no information will be fetched for this entry.")
+            pdb_combo_to_uniprot[(pdb_id, chain)] = ["no UniProt entry associated"]
+        else:
+            pdb_combo_to_uniprot[(pdb_id, chain)] = uniprot_ids
+    except Exception as e:
+        logger.error(f"Failed to fetch protein information from PDB due to the following error: {e}.")
+        logger.error(f"You can retry with --restart if needed, or without --uniprot.")
+# now add in the fetched information to the df
+filtered_df["uniprot_id"] = filtered_df.apply(lambda row: pdb_combo_to_uniprot.get((row["pdb_id"], row["chain"])), axis=1)
+filtered_df = filtered_df.explode("uniprot_id")  # explode the list of UniProt IDs into separate rows
+
+
 n_missing = int(filtered_df["pdb_name"].isna().sum())
 if n_missing:
     logger.warning(f"{n_missing} of {len(filtered_df)} targets have no pdb_name (see errors above).")
 
 # save target (first column) and pdb_name (second column)
-filtered_df[["target", "pdb_name"]].to_csv(OUTPUT_TSV, sep="\t", index=False)
+filtered_df[["target", "pdb_name", "uniprot_id"]].to_csv(OUTPUT_TSV, sep="\t", index=False)
 logger.info(f"Saved results to {OUTPUT_TSV}.")
