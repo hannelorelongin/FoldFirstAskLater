@@ -170,8 +170,8 @@ def get_foldfirst_hits(
                 axis=1
             )
             # fetch the names and uniprot IDs for the active PDB identifiers
-            pdb_to_chains_and_names = get_pdb_names([pdb_id for pdb_id in unique_pdb_ids if pdb_id not in obsolete_ids])
-            filtered_df[["pdb_name", "uniprot_ids"]] = filtered_df.apply(lambda row: get_pdb_and_chain_name_and_uniprot(pdb_to_chains_and_names, row["pdb_id"], row["chain"]), axis=1, result_type="expand")
+            pdb_to_chains_and_names = fetch_pdb_data([pdb_id for pdb_id in unique_pdb_ids if pdb_id not in obsolete_ids])
+            filtered_df[["pdb_name", "uniprot_id"]] = filtered_df.apply(lambda row: get_pdb_and_chain_name_and_uniprot(pdb_to_chains_and_names, row["pdb_id"], row["chain"]), axis=1, result_type="expand")
             if binary_class:
                 filtered_df["informativeness"] = filtered_df.apply(lambda row: is_uninformative(row["pdb_name"]), axis=1)
             else:
@@ -257,8 +257,10 @@ def get_protein_name_string(uniprot_id):
 
 # parse PDB identifiers from PDB FoldSeekdatabase identifiers
 def get_PDBid_chain_from_target(target):
-    pdb_id = target.split("-")[0]
+    pdb_id = target.split("-")[0].upper()
     chain = target.split("_")[-1]
+    if "-" in chain:
+            chain = chain.split("-")[0]
     return pdb_id, chain
 
 def query_pdb_graphql(pdb_ids: list[str]) -> dict:
@@ -273,7 +275,7 @@ def query_pdb_graphql(pdb_ids: list[str]) -> dict:
         }
     }
     }"""
-    r = requests.post(URL, json={"query": QUERY, "variables": {"ids": ids[i:i+chunk]}}, timeout=60)
+    r = requests.post(URL, json={"query": QUERY, "variables": {"ids": pdb_ids}}, timeout=60)
     r.raise_for_status()
     return r.json()
 
@@ -304,12 +306,14 @@ def parse_graphql_json(response_json: dict) -> dict[str, dict[str, str]]:
             description = entity.get("rcsb_polymer_entity", {}).get("pdbx_description")
             auth_asym_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("auth_asym_ids", [])
             uniprot_ids = entity.get("rcsb_polymer_entity_container_identifiers", {}).get("uniprot_ids", [])
+            if not uniprot_ids:
+                uniprot_ids = []
             for chain in auth_asym_ids:
                 chains_and_names[chain] = {'description': description, 'uniprot_ids': uniprot_ids}
         pdb_to_chains_and_names[pdb_id] = chains_and_names
     return pdb_to_chains_and_names
 
-def get_pdb_names(pdb_ids: list[str]) -> dict:
+def fetch_pdb_data(pdb_ids: list[str]) -> dict:
     """
     Fetches polymer descriptions for a list of PDB IDs using the RCSB GraphQL API.
 
@@ -350,12 +354,13 @@ def get_pdb_and_chain_name_and_uniprot(pdb_to_chains_and_names: dict, pdb_id: st
     chains_and_names = pdb_to_chains_and_names.get(pdb_id)
     if chains_and_names is None:
         logger.warning(f"No information found for PDB ID {pdb_id}.")
-        return None
+        return None, None
     name = chains_and_names.get(chain, {}).get('description')
     uniprot_ids = chains_and_names.get(chain, {}).get('uniprot_ids')
     if name is None:
         logger.warning(f"No information found for PDB ID {pdb_id} chain {chain}.")
-    if uniprot_ids is None:
+        return None, None
+    if len(uniprot_ids) == 0:
         logger.warning(f"No UniProt entry associated with PDB ID {pdb_id} chain {chain}, hence, no information will be fetched for this entry.")
         uniprot_ids = ["no UniProt entry associated"]
     return name, uniprot_ids
